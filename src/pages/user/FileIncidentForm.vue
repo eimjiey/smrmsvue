@@ -1,9 +1,9 @@
 <script setup>
-import { reactive, computed, watch, ref } from 'vue'; // Added ref for status tracking
+import { reactive, computed, watch, ref } from 'vue';
+import api from '@/services/api'; // 1. Import the custom API service
 
 // --- Static Data ---
 const yearLevels = ['1st Year', '2nd Year', '3rd Year', '4th Year', '5th Year'];
-// Structured data for cleaner backend logic (offense_types in the database)
 const offenseCategories = [
     {
         name: 'Minor Offense',
@@ -37,8 +37,8 @@ const form = reactive({
     dateOfIncident: new Date().toISOString().substring(0, 10),
     timeOfIncident: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false }),
     location: '',
-    offenseCategory: '', // Initial state for the Category dropdown
-    specificOffense: '', // Initial state for the specific offense dropdown
+    offenseCategory: '', 
+    specificOffense: '', 
     description: '',
 });
 
@@ -50,13 +50,11 @@ const maxRetries = 3;
 
 // --- Computed Properties & Logic ---
 
-// Dynamically filters the list of specific offenses based on the selected category.
 const availableOffenses = computed(() => {
     const category = offenseCategories.find(c => c.name === form.offenseCategory);
     return category ? category.offenses : [];
 });
 
-// Resets the specific offense whenever the category changes (The "automatic" part).
 watch(() => form.offenseCategory, () => {
     form.specificOffense = '';
 });
@@ -64,16 +62,17 @@ watch(() => form.offenseCategory, () => {
 // --- Utility for Exponential Backoff ---
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
-// --- Submission Handler: Connect to Laravel Backend ---
+// --- Submission Handler: CORRECTED to use imported 'api' service ---
 const handleSubmit = async (event) => {
     event.preventDefault();
     isSubmitting.value = true;
     submitError.value = null;
     isSubmitted.value = false;
 
-    // Deep copy of the form data for API transmission
     const submittedData = JSON.parse(JSON.stringify(form));
-    const API_URL = '/api/incidents'; // *** The Laravel API Endpoint ***
+    
+    // 2. Use relative endpoint path, as the base URL is handled by 'api' instance
+    const API_ENDPOINT = '/incidents'; 
 
     for (let attempt = 0; attempt < maxRetries; attempt++) {
         try {
@@ -83,49 +82,51 @@ const handleSubmit = async (event) => {
                 await sleep(delay);
             }
             
-            console.log(`Attempt ${attempt + 1}: Submitting data to ${API_URL}`);
+            // Console log now confirms the relative endpoint path is used
+            console.log(`Attempt ${attempt + 1}: Submitting data to ${API_ENDPOINT} (via API Service)`);
 
-            const response = await fetch(API_URL, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    // NOTE: In a real Laravel application, you would also need to handle
-                    // the CSRF token if using session-based authentication:
-                    // 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content, 
-                },
-                body: JSON.stringify(submittedData)
-            });
-
-            if (!response.ok) {
-                // Read the response body for detailed error message
-                let errorDetails = await response.text();
-                try {
-                    errorDetails = JSON.parse(errorDetails);
-                    // Attempt to extract Laravel validation/exception message
-                    errorDetails = errorDetails.message || errorDetails.error || JSON.stringify(errorDetails);
-                } catch (e) {
-                    // Use raw text if JSON parsing fails
-                }
-                throw new Error(`Server returned status ${response.status}. ${errorDetails}`);
+            // 3. Use api.post instead of fetch
+            const response = await api.post(API_ENDPOINT, submittedData); 
+            
+            // Axios resolves promises only for 2xx status codes by default
+            // Response status should be 201 (Created) if the Laravel backend is correct
+            if (response.status === 201 || response.status === 200) {
+                 isSubmitted.value = true;
+                 isSubmitting.value = false;
+                 break; // Exit loop on success
             }
-
-            // Success handling: Assuming Laravel returns a 201 Created or 200 OK
-            isSubmitted.value = true;
-            isSubmitting.value = false;
-            // Optionally reset form after success
-            // Object.assign(form, { ...initialFormState, timeOfIncident: form.timeOfIncident, dateOfIncident: form.dateOfIncident }); 
-            break; // Exit loop on success
-
         } catch (error) {
+            // Axios throws an error for 4xx/5xx status codes
             console.error(`Submission failed on attempt ${attempt + 1}:`, error.message);
             
-            // Set error only after the final attempt
+            let errorMessage = 'An unexpected error occurred.';
+
+            if (error.response) {
+                // Server responded with a status code outside the 2xx range (e.g., 422, 500)
+                if (error.response.status === 404) {
+                    errorMessage = `Route Not Found (404). Check your Laravel route definition. Requested URL: ${error.config.baseURL}${API_ENDPOINT}`;
+                } else if (error.response.data && error.response.data.message) {
+                    // Laravel validation error or custom error message
+                    errorMessage = error.response.data.message;
+                } else if (error.response.status === 422) {
+                    // Validation errors often need explicit extraction of the message
+                    errorMessage = "Validation failed. Please check your form inputs.";
+                } else {
+                    errorMessage = `Server Error (${error.response.status}).`;
+                }
+            } else if (error.request) {
+                // The request was made but no response was received (network or firewall issue)
+                errorMessage = 'Network Error: Could not reach the API server. Please check the server address and connectivity.';
+            } else {
+                // Other errors (like network/DNS refusal, or errors during setup)
+                errorMessage = error.message;
+            }
+
+            // Set final error message after the last attempt
             if (attempt === maxRetries - 1) {
-                submitError.value = `Failed to file report. Please ensure the server is running and try again. Error: ${error.message}`;
+                submitError.value = `Failed to file report. Error: ${errorMessage}`;
             }
         } finally {
-            // Ensure loading state is reset outside of the loop structure if needed, 
-            // but we keep it inside the loop to reset on success break.
             if (attempt === maxRetries - 1 || isSubmitted.value) {
                 isSubmitting.value = false;
             }

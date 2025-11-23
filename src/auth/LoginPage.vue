@@ -50,7 +50,7 @@
 import axios from 'axios';
 import logo from '@/assets/ISULOGO.png';
 
-axios.defaults.baseURL = process.env.VUE_APP_API_URL || 'http://192.168.1.243:8000/api';
+axios.defaults.baseURL = process.env.VUE_APP_API_URL || 'http://192.168.8.50:8000/api';
 
 export default {
   name: 'LoginPage',
@@ -104,6 +104,8 @@ export default {
           this.errorMessage = error.response.data.message;
         } else if (error.response && error.response.status === 401) {
           this.errorMessage = 'Invalid email or password';
+        } else if (error.code === 'ERR_NETWORK') {
+          this.errorMessage = 'Unable to connect to the server. Please check your network connection and ensure the backend server is running.';
         } else {
           this.errorMessage = 'Login failed. Please check network connection.';
         }

@@ -5,7 +5,7 @@ import axios from 'axios';
 // 1. Create the Axios instance
 const api = axios.create({
   // Use env var when available (set via .env.local), otherwise fallback
-  baseURL: process.env.VUE_APP_API_URL || 'http://192.168.1.243:8000/api',
+  baseURL: process.env.VUE_APP_API_URL || 'http://192.168.8.50:8000/api',
   headers: {
     'Accept': 'application/json',
     'Content-Type': 'application/json',
@@ -34,6 +34,12 @@ api.interceptors.response.use(
   },
   async (error) => {
     const originalRequest = error.config;
+    
+    // Handle network errors
+    if (!error.response) {
+      console.error('Network error: Unable to connect to the server');
+      return Promise.reject(new Error('Network error: Unable to connect to the server. Please check your network connection and ensure the backend server is running.'));
+    }
     
     // Example logic for handling token expiration (401 error)
     if (error.response && error.response.status === 401 && !originalRequest._retry) {
