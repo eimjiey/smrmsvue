@@ -1,16 +1,22 @@
 <template>
   <div :style="containerStyle">
+    <div :style="backgroundOverlayStyle"></div> 
+    
     <div :style="welcomeSectionStyle">
       <div :style="logoWrapStyle">
         <img :src="logoSrc" :alt="'Logo'" :style="logoStyle" />
       </div>
+      
       <h1 :style="welcomeTextStyle">HELLO, WELCOME!</h1>
+      
       <div :style="descStyle">STUDENT MISCONDUCT REPORT MANAGEMENT</div>
+      
       <div :style="registerBoxStyle">
         <div :style="registerPromptStyle">Don't have an account?</div>
         <button :style="registerButtonStyle" @click="goToRegister">Register</button>
       </div>
     </div>
+    
     <div :style="loginSectionStyle">
       <div :style="loginBoxStyle">
         <h2 :style="loginHeaderStyle">LOG IN</h2>
@@ -48,7 +54,8 @@
 
 <script>
 import axios from 'axios';
-import logo from '@/assets/ISULOGO.png';
+import background from '@/assets/BACKGROUND.jpg'; 
+import logo from '@/assets/ISULOGO.png'; 
 
 axios.defaults.baseURL = process.env.VUE_APP_API_URL || 'http://192.168.8.50:8000/api';
 
@@ -61,6 +68,7 @@ export default {
         password: ''
       },
       logoSrc: logo,
+      backgroundSrc: background,
       errorMessage: '',
       isLoading: false
     };
@@ -125,155 +133,194 @@ export default {
       return {
         display: 'flex',
         minHeight: '100vh',
-        background: '#181818',
-        fontFamily: 'Arial, sans-serif'
+        fontFamily: 'Arial, sans-serif',
+        backgroundImage: `url(${this.backgroundSrc})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        alignItems: 'center',
+        justifyContent: 'center',
+        position: 'relative',
+      };
+    },
+    backgroundOverlayStyle() {
+      return {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        width: '100%',
+        height: '100%',
+        backgroundColor: 'rgba(0, 0, 0, 0.4)',
+        zIndex: 1
       };
     },
     welcomeSectionStyle() {
+      // The main container for the left side is now transparent, relying on the logo and a pseudo-element for the color overlay
       return {
-        background: '#0a8805',
+        background: 'transparent', // Set main background to transparent
         color: '#fff',
-        flex: '0.55',
+        flex: '0.45',
+        minHeight: '600px',
         display: 'flex',
         flexDirection: 'column',
         justifyContent: 'center',
         alignItems: 'center',
-        borderTopLeftRadius: '40px',
-        borderBottomLeftRadius: '40px',
-        position: 'relative'
+        padding: '20px',
+        borderRadius: '0',
+        zIndex: 3,
+        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2)',
+        overflow: 'hidden', 
+        position: 'relative', 
+        '--dark-green-overlay': '#1d3e21e0',
       };
     },
     logoWrapStyle() {
       return {
-        opacity: 0.18,
         position: 'absolute',
-        left: '25px',
-        top: '25px',
+        top: '0',
+        left: '0', 
         width: '100%',
-        height: '80%',
+        height: '100%',
         display: 'flex',
-        justifyContent: 'center'
+        justifyContent: 'center', 
+        alignItems: 'center',
+        zIndex: 1, 
+        background: '#1d3e21e0', 
       };
     },
     logoStyle() {
       return {
-        maxWidth: '400px',
-        maxHeight: '400px',
-        zIndex: 1
+        maxWidth: 'auto',
+        maxHeight: '100%',
+        height: '100%',
+        width: 'auto',
+        opacity: 0.18, 
+        zIndex: 2,
+        filter: 'blur(3px)',
+        transform: 'scale(1.5) translateX(-25%)',
       };
     },
     welcomeTextStyle() {
       return {
-        fontSize: '2.2rem',
-        marginTop: '120px',
+        fontSize: '2.5rem',
+        marginTop: '0',
         fontWeight: 'bold',
         letterSpacing: '1px',
-        zIndex: 2
+        zIndex: 4,
       };
     },
     descStyle() {
       return {
-        fontSize: '1.1rem',
-        fontWeight: 'bold',
-        margin: '24px 0 18px 0',
-        zIndex: 2,
-        textAlign: 'center'
+        fontSize: '1.2rem',
+        fontWeight: 'normal',
+        margin: '18px 0 10px 0',
+        zIndex: 4,
+        textAlign: 'center',
+        color: '#ccc',
       };
     },
     registerBoxStyle() {
       return {
-        zIndex: 2,
-        marginTop: '35px',
+        zIndex: 4,
+        marginTop: '30px',
         textAlign: 'center'
       };
     },
     registerPromptStyle() {
       return {
-        marginBottom: '12px'
+        marginBottom: '10px',
+        fontSize: '0.95rem'
       };
     },
     registerButtonStyle() {
       return {
-        padding: '10px 22px',
+        padding: '10px 30px',
         background: '#e3e3e3',
-        color: '#0a8805',
+        color: '#1d3e21',
         fontWeight: 'bold',
         border: 'none',
-        borderRadius: '6px',
+        borderRadius: '8px',
         fontSize: '1.1rem',
-        cursor: 'pointer'
+        cursor: 'pointer',
+        boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)'
       };
     },
     loginSectionStyle() {
       return {
-        flex: '0.45',
-        background: '#f2ffee',
+        flex: '0.35',
+        background: '#f8fff8',
         display: 'flex',
         alignItems: 'center',
-        justifyContent: 'center'
+        justifyContent: 'center',
+        minHeight: '600px',
+        padding: '20px',
+        borderRadius: '20px',
+        zIndex: 3,
+        boxShadow: '0 4px 20px rgba(0, 0, 0, 0.3)',
+        marginLeft: '-30px',
       };
     },
     loginBoxStyle() {
       return {
-        width: '380px',
+        width: '320px',
         background: 'transparent',
-        borderRadius: '10px',
-        padding: '44px 0 0 0',
+        padding: '0',
         display: 'flex',
         flexDirection: 'column'
       };
     },
     loginHeaderStyle() {
       return {
-        color: '#16802b',
-        fontWeight: 'bold',
-        fontSize: '2rem',
-        marginBottom: '34px',
+        color: '#1d3e21',
+        fontWeight: '900',
+        fontSize: '2.5rem',
+        marginBottom: '40px',
         textAlign: 'center',
-        letterSpacing: '2px'
+        letterSpacing: '3px'
       };
     },
     formGroupStyle() {
       return {
-        marginBottom: '22px',
+        marginBottom: '20px',
         width: '100%'
       };
     },
     inputStyle() {
       return {
         width: '100%',
-        padding: '12px',
-        marginBottom: '0px',
+        padding: '14px 16px',
         fontSize: '1rem',
         border: 'none',
-        borderRadius: '6px',
-        background: '#e8e8e8',
+        borderRadius: '10px',
+        background: '#e6f0e7',
         outline: 'none',
-        color: '#16802b',
-        fontWeight: 'bold'
+        color: '#333',
+        fontWeight: 'normal',
+        boxShadow: 'inset 0 1px 3px rgba(0, 0, 0, 0.1)'
       };
     },
     forgotStyle() {
       return {
-        color: '#15802b',
-        fontSize: '1rem',
+        color: '#1d3e21',
+        fontSize: '0.9rem',
         cursor: 'pointer',
-        margin: '8px 0 22px 2px'
+        textAlign: 'right',
+        margin: '0 5px 25px 0'
       };
     },
     loginButtonStyle() {
       return {
         width: '100%',
-        padding: '11px 0',
-        background: '#15802b',
+        padding: '12px 0',
+        background: '#1d3e21',
         color: '#fff',
         fontWeight: 'bold',
         border: 'none',
-        borderRadius: '7px',
-        fontSize: '1.09rem',
+        borderRadius: '10px',
+        fontSize: '1.1rem',
         cursor: 'pointer',
         opacity: this.isLoading ? 0.7 : 1,
-        transition: 'opacity 0.2s'
+        transition: 'opacity 0.2s',
+        boxShadow: '0 4px 6px rgba(0, 0, 0, 0.2)'
       };
     },
     errorStyle() {

@@ -1,59 +1,68 @@
 <template>
-    <div class="admin-dashboard">
-        <header class="header">
-            <h1>Admin Dashboard</h1>
-            <div class="user-info">Welcome, <strong>{{ userName }}</strong></div>
-        </header>
-
-        <!-- Comprehensive Stats Section -->
-        <section class="quick-stats-grid">
-            
-            <!-- Overall System Counts -->
-            <div class="stat-main bg-blue-100 text-blue-800">
-                <div class="stat-value text-blue-700">{{ stats.students }}</div>
-                <div class="stat-label">Total Students</div>
-            </div>
-            
-            <div class="stat-main bg-purple-100 text-purple-800">
-                <div class="stat-value text-purple-700">{{ stats.reports }}</div>
-                <div class="stat-label">Total Reports Filed</div>
-            </div>
-
-            <!-- Detailed Incident Statuses -->
-            <div class="stat-status bg-red-50 text-red-700 border-red-300">
-                <div class="stat-value-sm">{{ stats.pending }}</div>
-                <div class="stat-label-sm">Pending</div>
-            </div>
-            
-            <div class="stat-status bg-yellow-50 text-yellow-700 border-yellow-300">
-                <div class="stat-value-sm">{{ stats.underReview }}</div>
-                <div class="stat-label-sm">Under Review</div>
-            </div>
-            
-            <div class="stat-status bg-green-50 text-green-700 border-green-300">
-                <div class="stat-value-sm">{{ stats.resolved }}</div>
-                <div class="stat-label-sm">Resolved</div>
-            </div>
-
-            <div class="stat-status bg-gray-50 text-gray-700 border-gray-300">
-                <div class="stat-value-sm">{{ stats.closed }}</div>
-                <div class="stat-label-sm">Closed</div>
-            </div>
-
-        </section>
-
-        <section class="actions">
-            <button @click="$router.push({ name: 'AdminStudents' })">Students List</button>
-            <button @click="$router.push({ name: 'AdminIncidents' })">Incident Reports</button>
-            <button @click="$router.push({ name: 'AddStudent' })">Add Student</button>
-            <button class="danger" @click="logout">Logout</button>
-        </section> 
-        <footer class="footer">© {{ new Date().getFullYear() }} SMRMS</footer>
+  <div :style="adminDashboardStyle">
+    
+    <div :style="navContainerStyle">
+      <div :style="navLeftStyle">
+        <button :style="navButtonStyle" @click="$router.push({ name: 'AdminDashboard' })">
+          <span :style="iconStyle">📊</span> DASHBOARD
+        </button>
+        <div :style="navLinksStyle">
+          <span @click="$router.push({ name: 'AdminStudents' })" :style="navLinkStyle">STUDENTS LIST</span>
+          <span @click="$router.push({ name: 'AdminIncidents' })" :style="navLinkStyle">INCIDENT REPORT</span>
+          <span @click="$router.push({ name: 'AddStudent' })" :style="navLinkStyle">ADD STUDENT</span>
+        </div>
+      </div>
+      <div :style="userProfileStyle">
+        <span :style="profileIconStyle">👤</span>
+      </div>
     </div>
+    
+    <h1 :style="mainTitleStyle">STUDENT MISCONDUCT REPORT MANAGEMENT</h1>
+
+    <section :style="quickStatsGridStyle">
+      <div :style="getStatMainStyle(true)">
+        <div :style="statValueStyle">{{ stats.students }}</div>
+        <div :style="statLabelStyle">{{ getStatLabelText('TOTAL STUDENTS') }}</div>
+      </div>
+      
+      <div :style="getStatMainStyle(false)">
+        <div :style="statValueStyle">{{ stats.reports }}</div>
+        <div :style="statLabelStyle">{{ getStatLabelText('TOTAL REPORTS FILED') }}</div>
+      </div>
+
+      <div :style="statusRowStyle">
+        <div :style="getStatStatusStyle('#95d2b7')">
+          <div :style="statValueSmStyle">{{ stats.pending }}</div>
+          <div :style="statLabelSmStyle">{{ getStatLabelText('PENDING') }}</div>
+        </div>
+        
+        <div :style="getStatStatusStyle('#95d2b7')">
+          <div :style="statValueSmStyle">{{ stats.underReview }}</div>
+          <div :style="statLabelSmStyle">{{ getStatLabelText('UNDER REVIEW') }}</div>
+        </div>
+        
+        <div :style="getStatStatusStyle('#95d2b7')">
+          <div :style="statValueSmStyle">{{ stats.resolved }}</div>
+          <div :style="statLabelSmStyle">{{ getStatLabelText('RESOLVED') }}</div>
+        </div>
+
+        <div :style="getStatStatusStyle('#95d2b7')">
+          <div :style="statValueSmStyle">{{ stats.closed }}</div>
+          <div :style="statLabelSmStyle">{{ getStatLabelText('CLOSED') }}</div>
+        </div>
+      </div>
+      
+    </section>
+    
+    <footer :style="footerStyle">
+        <button :style="logoutButtonStyle" @click="logout">Logout</button>
+    </footer>
+    
+  </div>
 </template>
 
 <script>
-import api from '@/services/api'; // Import your API service
+import api from '@/services/api'; 
 
 export default {
     name: 'AdminDashboard',
@@ -61,17 +70,50 @@ export default {
         return {
             userName: this.getUserName(),
             stats: {
-                students: '—', 
-                reports: '—',
-                pending: '—',
-                underReview: '—', // NEW
-                resolved: '—',    // NEW
-                closed: '—'       // NEW
+                students: '2',
+                reports: '4',
+                pending: '1',
+                underReview: '1',
+                resolved: '1',
+                closed: '1'
             },
             isStatsLoading: false,
         }
     },
     methods: {
+        getStatMainStyle(isStudents) {
+            return {
+                width: '100%',
+                height: '130px',
+                background: '#1d3e21',
+                color: '#f8fff8',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                borderRadius: '10px',
+                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
+                padding: '20px',
+                ...(isStudents ? { marginRight: '10px' } : { marginLeft: '10px' }),
+            };
+        },
+        getStatStatusStyle(color) {
+            return {
+                width: 'calc(25% - 10px)',
+                padding: '10px 5px',
+                background: color,
+                color: '#1d3e21',
+                fontWeight: 'bold',
+                borderRadius: '5px',
+                textAlign: 'center',
+                fontSize: '1.1rem',
+                boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
+            };
+        },
+        getStatLabelText(label) {
+            return label;
+        },
+        
         getUserName() {
             try {
                 const u = localStorage.getItem('user')
@@ -87,12 +129,9 @@ export default {
         async fetchAdminStats() {
             this.isStatsLoading = true;
             try {
-                // This call uses the '/admin/stats' route which your DashboardController handles
                 const response = await api.get('/admin/stats'); 
                 
-                // Response data now includes all detailed status counts
                 this.stats = response.data;
-
                 localStorage.setItem('adminStats', JSON.stringify(this.stats));
 
             } catch (error) {
@@ -116,123 +155,173 @@ export default {
         }
     },
     mounted() {
-        this.fetchAdminStats(); // Fetch real data when the component is mounted
+        this.fetchAdminStats();
+    },
+    computed: {
+        // FIX: Wrapped all static style objects in getter functions
+        
+        adminDashboardStyle() {
+            return {
+                padding: '0', 
+                fontFamily: 'Arial, sans-serif',
+                minHeight: '100vh',
+                backgroundColor: '#e6f0e7',
+            };
+        },
+        navContainerStyle() {
+            return {
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                padding: '10px 20px',
+                background: '#1d3e21',
+                color: '#fff',
+                fontWeight: 'bold',
+                boxShadow: '0 4px 6px rgba(0, 0, 0, 0.2)',
+            };
+        },
+        navLeftStyle() {
+            return {
+                display: 'flex',
+                alignItems: 'center',
+                gap: '20px',
+            };
+        },
+        navButtonStyle() {
+            return {
+                display: 'flex',
+                alignItems: 'center',
+                padding: '8px 15px',
+                background: '#4CAF50',
+                color: '#fff',
+                border: 'none',
+                borderRadius: '5px',
+                cursor: 'pointer',
+                fontSize: '0.9rem',
+                fontWeight: 'bold',
+                boxShadow: '0 2px 4px rgba(0, 0, 0, 0.2)',
+            };
+        },
+        iconStyle() {
+            return {
+                marginRight: '8px',
+            };
+        },
+        navLinksStyle() {
+            return {
+                display: 'flex',
+                gap: '20px',
+                fontSize: '0.9rem',
+                textTransform: 'uppercase',
+                color: '#ddd',
+            };
+        },
+        navLinkStyle() {
+            return {
+                cursor: 'pointer',
+                transition: 'color 0.2s',
+            };
+        },
+        userProfileStyle() {
+            return {
+                padding: '8px 10px',
+                background: '#f8fff8',
+                borderRadius: '50%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: '35px',
+                height: '35px',
+                color: '#1d3e21',
+            };
+        },
+        profileIconStyle() {
+            return {
+                fontSize: '1.2rem',
+            };
+        },
+        mainTitleStyle() {
+            return {
+                textAlign: 'center',
+                fontSize: '1.8rem',
+                fontWeight: 'bold',
+                color: '#1d3e21',
+                margin: '40px 0 30px 0',
+                textTransform: 'uppercase',
+            };
+        },
+        quickStatsGridStyle() {
+            return {
+                maxWidth: '900px',
+                margin: '0 auto',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '20px',
+            };
+        },
+        statValueStyle() {
+            return {
+                fontSize: '3.5rem',
+                fontWeight: '900',
+                lineHeight: '1',
+            };
+        },
+        statLabelStyle() {
+            return {
+                marginTop: '10px',
+                fontSize: '1rem',
+                textTransform: 'uppercase',
+                letterSpacing: '0.5px',
+            };
+        },
+        statusRowStyle() {
+            return {
+                display: 'flex',
+                justifyContent: 'space-around',
+                alignItems: 'center',
+                padding: '20px 0',
+                marginTop: '10px',
+                transform: 'translateY(-10px)',
+            };
+        },
+        statValueSmStyle() {
+            return {
+                fontSize: '1.2rem',
+                fontWeight: '900',
+                lineHeight: '1',
+                marginBottom: '5px',
+                color: '#1d3e21'
+            };
+        },
+        statLabelSmStyle() {
+            return {
+                fontSize: '0.7rem',
+                textTransform: 'uppercase',
+                letterSpacing: '0.5px',
+                color: '#1d3e21',
+            };
+        },
+        footerStyle() {
+            return {
+                textAlign: 'center',
+                marginTop: '40px',
+            };
+        },
+        logoutButtonStyle() {
+            return {
+                padding: '10px 20px',
+                background: '#dc2626',
+                color: '#fff',
+                border: 'none',
+                borderRadius: '5px',
+                cursor: 'pointer',
+                fontWeight: 'bold',
+            };
+        },
     }
 }
 </script>
 
 <style scoped>
-.admin-dashboard { 
-    max-width: 1000px; 
-    margin: 32px auto; 
-    padding: 20px; 
-    font-family: 'Inter', Arial, Helvetica, sans-serif;
-}
-.header { 
-    display:flex; 
-    justify-content:space-between; 
-    align-items:center; 
-    margin-bottom:24px; 
-    padding-bottom:10px; 
-    border-bottom: 2px solid #e5e7eb; 
-}
-.header h1 { 
-    margin:0; 
-    color:#4338ca; 
-    font-size: 2.2rem; 
-}
-.user-info { 
-    color:#4b5563; 
-    font-weight: 600; 
-}
-
-/* New Grid Layout for Stats */
-.quick-stats-grid { 
-    display: grid; 
-    grid-template-columns: repeat(2, 1fr); 
-    gap: 16px; 
-    margin-bottom: 30px; 
-}
-
-/* Main Stats (Students, Total Reports) */
-.stat-main {
-    grid-column: span 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: 30px 20px;
-    border-radius: 12px;
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-    font-weight: 600;
-}
-.stat-value { 
-    font-size: 3rem; 
-    font-weight: 900; 
-}
-.stat-label { 
-    margin-top: 5px; 
-    font-size: 1rem; 
-    text-transform: uppercase; 
-    letter-spacing: 0.5px; 
-}
-
-/* Status Breakdown Stats */
-.stat-status {
-    grid-column: span 1 / span 1; /* Default to full width on mobile, stack beneath main stats */
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 18px 25px;
-    border-radius: 10px;
-    border: 1px solid;
-    font-weight: 600;
-}
-.stat-value-sm {
-    font-size: 2rem; 
-    font-weight: 800;
-}
-.stat-label-sm {
-    font-size: 0.85rem; 
-    text-transform: uppercase;
-    letter-spacing: 0.8px;
-}
-
-/* Responsive adjustment */
-@media (min-width: 768px) {
-    /* On tablet/desktop, main stats take up 2 columns, status stats take up 1 column each */
-    .quick-stats-grid { 
-        grid-template-columns: repeat(4, 1fr); 
-    }
-    .stat-main {
-        grid-column: span 2 / span 2;
-    }
-    .stat-status {
-        grid-column: span 1 / span 1;
-    }
-}
-
-
-.actions { display:flex; gap:12px; flex-wrap:wrap; margin-bottom:18px }
-.actions button { padding:10px 18px; border-radius:8px; border:none; font-weight: 600; cursor:pointer; transition: all 0.2s; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); }
-
-.actions button:not(.danger) { 
-    background:#4f46e5; 
-    color:#fff; 
-    border: 1px solid #4f46e5;
-}
-.actions button:not(.danger):hover { 
-    background:#4338ca;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-}
-
-.actions button.danger { 
-    background:#dc2626; 
-    color:#fff; 
-    border: 1px solid #dc2626;
-}
-.actions button.danger:hover { 
-    background:#b91c1c; 
-}
-.footer { text-align:center; color:#9ca3af; margin-top:30px; font-size: 0.9rem; }
+/* Scoped CSS is empty as all styling is handled via computed properties */
 </style>

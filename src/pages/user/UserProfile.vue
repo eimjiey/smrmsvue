@@ -12,7 +12,12 @@ const user = reactive({
     id: null,
     name: '',
     email: '',
+    // Stored raw path (e.g., 'profiles/abc.jpg')
+    profilePicturePath: '', 
+    // Computed full URL with cache-buster
     profilePictureUrl: null,
+    // NEW: Timestamp for cache busting
+    profilePictureTimestamp: Date.now(), 
     role: '',
     // Fields for optional updates:
     newPassword: '',
@@ -26,19 +31,35 @@ const isLoading = ref(true);
 const isSubmitting = ref(false);
 const statusMessage = ref(null);
 const statusType = ref(''); // 'success' or 'error'
-const isEditingDetails = ref(false); // NEW: State to control Name/Email fields
+const isEditingDetails = ref(false); // State to control Name/Email fields
 
 // --- Constants ---
 const DEFAULT_AVATAR = 'https://placehold.co/100x100/A0AEC0/ffffff?text=User';
-const STORAGE_PATH = 'http://192.168.8.50:8000/storage/'; 
+// !! CRITICAL: This was changed to a relative path to see if it resolves the network issue. 
+// If your storage link is correct, using a relative path like '/storage/' often works
+// when the front-end is proxied to the backend.
+const STORAGE_PATH = '/storage/'; 
 
 // --- Helper Functions ---
 
 const getImagePath = (path) => {
-    if (path && !path.startsWith('http')) {
-        return STORAGE_PATH + path;
+    // If path is null/empty, or if it's already a full URL 
+    if (!path || path.startsWith('http')) {
+        return DEFAULT_AVATAR;
     }
-    return DEFAULT_AVATAR;
+    
+    // Construct the base permanent URL
+    // If STORAGE_PATH is relative ('/storage/'), it uses the current host (localhost:8080 or the proxied host).
+    let fullUrl = STORAGE_PATH + path;
+
+    // Append the timestamp to force browser reload (cache bust)
+    // This is necessary because Laravel generates a unique HASHED FILENAME,
+    // but the browser might still be caching the old path.
+    if (user.profilePictureTimestamp) {
+        fullUrl += `?t=${user.profilePictureTimestamp}`;
+    }
+    
+    return fullUrl;
 };
 
 // --- Profile Details Logic ---
@@ -47,6 +68,7 @@ const fetchProfile = async () => {
     isLoading.value = true;
     statusMessage.value = null;
     try {
+        // The API call uses the 'api' instance, which should handle the base URL (http://192.168.8.50:8000/api)
         const response = await api.get('/me');
         const data = response.data;
 
@@ -54,6 +76,11 @@ const fetchProfile = async () => {
         user.name = data.name;
         user.email = data.email;
         user.role = data.role;
+        
+        // Store the raw path
+        user.profilePicturePath = data.profile_picture;
+        // Update timestamp and compute the full URL with cache-buster
+        user.profilePictureTimestamp = Date.now(); 
         user.profilePictureUrl = getImagePath(data.profile_picture); 
 
         // Store original values for comparison/reset
@@ -62,7 +89,11 @@ const fetchProfile = async () => {
 
     } catch (error) {
         statusType.value = 'error';
-        statusMessage.value = error.response?.data?.message || 'Failed to load profile data.';
+        // Improved error messaging for network failure
+        const networkError = error.message && error.message.includes('Network error');
+        statusMessage.value = networkError 
+            ? 'Network error: Unable to connect to the server. Please check your network connection and ensure the backend server is running at http://192.168.8.50:8000.'
+            : (error.response?.data?.message || 'Failed to load profile data.');
         console.error('Fetch profile error:', error);
     } finally {
         isLoading.value = false;
@@ -81,7 +112,7 @@ const toggleEditDetails = () => {
 const handleFileUpload = (event) => {
     profileImageFile.value = event.target.files[0];
     if (profileImageFile.value) {
-        // Show local file preview
+        // Show local file preview (temporary object URL)
         user.profilePictureUrl = URL.createObjectURL(profileImageFile.value);
     }
 };
@@ -95,6 +126,8 @@ const handleProfileUpdate = async (event) => {
         const formData = new FormData();
         formData.append('name', user.name);
         formData.append('email', user.email);
+        // Important: Tell Laravel it's a PUT/PATCH request
+        formData.append('_method', 'PUT'); 
 
         if (profileImageFile.value) {
             formData.append('profile_picture', profileImageFile.value);
@@ -105,7 +138,6 @@ const handleProfileUpdate = async (event) => {
             formData.append('password_confirmation', user.newPasswordConfirmation);
         }
         
-        // Headers manually set for file upload
         const response = await api.post('/profile', formData, {
             headers: { 'Content-Type': 'multipart/form-data' },
         });
@@ -113,19 +145,32 @@ const handleProfileUpdate = async (event) => {
         statusType.value = 'success';
         statusMessage.value = response.data.message || 'Profile updated successfully!';
         
-        // Update local state with fresh data from server
-        user.originalName = response.data.user.name;
-        user.originalEmail = response.data.user.email;
+        const updatedUser = response.data.user;
+
+        // 1. Update local state with fresh data from server
+        user.name = updatedUser.name;
+        user.email = updatedUser.email;
+        user.role = updatedUser.role;
+
+        // 2. Update profile picture path/URL and CRITICAL: update timestamp
+        user.profilePicturePath = updatedUser.profile_picture;
+        user.profilePictureTimestamp = Date.now(); // FORCES CACHE BUSTING on the NEW path
+        user.profilePictureUrl = getImagePath(updatedUser.profile_picture);
+        
+        // 3. Store original values for comparison/reset
+        user.originalName = updatedUser.name;
+        user.originalEmail = updatedUser.email;
+
+        // 4. Clear password and file input state
         user.newPassword = '';
         user.newPasswordConfirmation = '';
         profileImageFile.value = null;
-        isEditingDetails.value = false; // Disable editing mode on successful save
 
-        if (response.data.user.profile_picture) {
-             user.profilePictureUrl = getImagePath(response.data.user.profile_picture);
-        }
-        
-        localStorage.setItem('user', JSON.stringify(response.data.user));
+        // 5. Disable editing mode on successful save
+        isEditingDetails.value = false; 
+
+        // 6. Update local storage user data
+        localStorage.setItem('user', JSON.stringify(updatedUser));
 
 
     } catch (error) {
