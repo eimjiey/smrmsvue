@@ -53,11 +53,11 @@
 </template>
 
 <script>
-import axios from 'axios';
+// NOTE: axios import is removed as we are using the configured 'api' instance
+import api from '@/services/api'; //api link - THIS is the instance with the base URL configured
 import background from '@/assets/BACKGROUND.jpg'; 
 import logo from '@/assets/ISULOGO.png'; 
 
-axios.defaults.baseURL = process.env.VUE_APP_API_URL || 'http://192.168.8.50:8000/api';
 
 export default {
   name: 'LoginPage',
@@ -85,7 +85,8 @@ export default {
           return;
         }
 
-        const response = await axios.post('/login', {
+        // CORRECTED: Use the imported 'api' instance for the POST request
+        const response = await api.post('/login', {
           email: this.user.email,
           password: this.user.password
         });

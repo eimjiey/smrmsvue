@@ -1,10 +1,10 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue';
-import { useRouter } from 'vue-router'; // 1. Import useRouter
-import api from '@/services/api'; 
+import { useRouter } from 'vue-router';
+import api from '@/services/api';
 
 // --- Setup ---
-const router = useRouter(); // 2. Initialize router
+const router = useRouter(); 
 
 // --- Configuration ---
 const statusOptions = ['Pending', 'Under Review', 'Resolved', 'Closed'];
@@ -17,11 +17,11 @@ const searchTerm = ref('');
 const sortBy = ref('date_of_incident');
 const sortDirection = ref('desc');
 
-// Modal State
-const showConfirmModal = ref(false);
-const incidentToDelete = ref(null);
+// Modal State (DELETE MODAL REMOVED)
+// const showConfirmModal = ref(false);
+// const incidentToDelete = ref(null);
 
-// --- API Fetching Logic (Omitted for brevity, remains the same) ---
+// --- API Fetching Logic (Functional) ---
 const fetchIncidents = async () => {
     isLoading.value = true;
     error.value = null;
@@ -33,7 +33,6 @@ const fetchIncidents = async () => {
         }
         incidents.value = Array.isArray(receivedData) ? receivedData : [];
     } catch (err) {
-        console.error('Failed to fetch incidents:', err);
         let errorMessage = 'Could not load incident reports. Check server connectivity or authentication.';
         if (err.response && err.response.data && err.response.data.message) {
             errorMessage = err.response.data.message;
@@ -44,7 +43,7 @@ const fetchIncidents = async () => {
     }
 };
 
-// --- Status Update Handler (Omitted for brevity, remains the same) ---
+// --- Status Update Handler (Functional) ---
 const updateIncidentStatus = async (incident, newStatus) => {
     if (incident.status === newStatus) return;
 
@@ -53,7 +52,6 @@ const updateIncidentStatus = async (incident, newStatus) => {
     error.value = null; 
 
     try {
-        console.log(`[STATUS] Sending PUT request to update ID ${incident.id} to ${newStatus}`);
         const response = await api.put(`/incidents/${incident.id}/status`, { status: newStatus });
 
         if (response.data && response.data.incident && response.data.incident.status === newStatus) {
@@ -64,7 +62,6 @@ const updateIncidentStatus = async (incident, newStatus) => {
         }
         
     } catch (err) {
-        console.error(`[STATUS FAILED] Error on PUT /incidents/${incident.id}/status:`, err);
         incident.status = originalStatus; 
         let msg = "Failed to update status. Check backend logs.";
         if (err.response && err.response.data && err.response.data.message) { msg = err.response.data.message; }
@@ -74,45 +71,21 @@ const updateIncidentStatus = async (incident, newStatus) => {
     }
 };
 
-// --- DELETE HANDLER (Omitted for brevity, remains the same) ---
-const confirmDelete = (incident) => {
-    incidentToDelete.value = incident;
-    showConfirmModal.value = true;
-};
+// --- DELETE HANDLER (Removed) ---
+// const confirmDelete = (incident) => {
+//     // Functionality removed
+// };
+// const deleteIncident = async () => {
+//     // Functionality removed
+// };
 
-const deleteIncident = async () => {
-    if (!incidentToDelete.value) return;
-
-    const incidentId = incidentToDelete.value.id;
-    error.value = null; 
-    showConfirmModal.value = false;
-    incidentToDelete.value = null;
-
-    try {
-        console.log(`[DELETE] Sending DELETE request for ID ${incidentId}`);
-        await api.delete(`/incidents/${incidentId}`);
-        incidents.value = incidents.value.filter(i => i.id !== incidentId);
-        error.value = `✅ Incident ${incidentId} deleted successfully.`;
-    } catch (err) {
-        console.error(`[DELETE FAILED] Error on DELETE /incidents/${incidentId}:`, err);
-        let msg = "Failed to delete report. Check backend logs.";
-        if (err.response && err.response.data && err.response.data.message) { msg = err.response.data.message; }
-        error.value = `❌ Failed to delete incident ${incidentId}. Message: ${msg}`;
-    } finally {
-        setTimeout(() => { error.value = null; }, 5000);
-    }
-};
-
-// 3. Edit Handler (FIXED to use router push)
+// 3. Edit Handler
 const handleEdit = (incident) => {
-    console.log(`[EDIT] Navigating to edit page for Incident ID: ${incident.id}`);
-    
-    // *** CRITICAL FIX: Navigate to the dynamic route 'EditIncident' ***
     router.push({ name: 'EditIncident', params: { id: incident.id } }); 
 };
 
 
-// --- Computed Properties & Utility Methods (Omitted for brevity, remain the same) ---
+// --- Computed Properties & Utility Methods (Functional) ---
 
 const filteredIncidents = computed(() => {
     const incidentList = incidents.value || [];
@@ -159,11 +132,11 @@ const getSortIcon = (column) => {
 
 const getStatusClasses = (status) => {
     switch (status) {
-        case 'Resolved': return 'bg-green-100 text-green-800 border-green-500';
-        case 'Under Review': return 'bg-blue-100 text-blue-800 border-blue-500';
-        case 'Closed': return 'bg-gray-200 text-gray-800 border-gray-500';
+        case 'Resolved': return { backgroundColor: '#d4edda', color: '#155724', borderColor: '#c3e6cb' };
+        case 'Under Review': return { backgroundColor: '#cce5ff', color: '#004085', borderColor: '#b8daff' };
+        case 'Closed': return { backgroundColor: '#e9ecef', color: '#495057', borderColor: '#ced4da' };
         case 'Pending': 
-        default: return 'bg-red-100 text-red-800 border-red-500 animate-pulse';
+        default: return { backgroundColor: '#f8d7da', color: '#721c24', borderColor: '#f5c6cb' };
     }
 };
 
@@ -179,36 +152,373 @@ const formatDate = (dateString, timeString) => {
 
 // --- Lifecycle Hook ---
 onMounted(fetchIncidents);
+
+// --- START STYLING LOGIC ---
+
+// --- General & Container Styles ---
+const pageContainerStyle = computed(() => ({
+    padding: '20px 40px',
+    minHeight: '100vh',
+    backgroundColor: '#e6f0e7', // Light green background
+    fontFamily: 'Arial, sans-serif',
+}));
+
+const mainHeadingStyle = computed(() => ({
+    fontSize: '2.5rem',
+    fontWeight: '800',
+    color: '#1d3e21', // Dark green title color
+    marginBottom: '8px',
+    marginTop: '60px', // Push content below fixed nav
+}));
+
+const subHeadingStyle = computed(() => ({
+    color: '#4b5563',
+    marginBottom: '24px',
+}));
+
+// --- Navigation Styles (Replicating Dashboard Header) ---
+const navContainerStyle = computed(() => ({
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: '10px 20px',
+    background: '#1d3e21',
+    color: '#fff',
+    fontWeight: 'bold',
+    boxShadow: '0 4px 6px rgba(0, 0, 0, 0.2)',
+    position: 'fixed',
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 1000,
+}));
+
+const navLeftStyle = computed(() => ({
+    display: 'flex',
+    alignItems: 'center',
+    gap: '20px',
+}));
+
+const navButtonStyle = computed(() => ({
+    display: 'flex',
+    alignItems: 'center',
+    padding: '8px 15px',
+    background: '#4CAF50',
+    color: '#fff',
+    border: 'none',
+    borderRadius: '5px',
+    cursor: 'pointer',
+    fontSize: '0.9rem',
+    fontWeight: 'bold',
+    boxShadow: '0 2px 4px rgba(0, 0, 0, 0.2)',
+}));
+
+const activeNavButtonStyle = computed(() => ({
+     display: 'flex',
+    alignItems: 'center',
+    padding: '8px 15px',
+    background: '#f8fff8', // Light background for active button
+    color: '#1d3e21', // Dark green text for active button
+    border: 'none',
+    borderRadius: '5px',
+    cursor: 'default',
+    fontSize: '0.9rem',
+    fontWeight: 'bold',
+    boxShadow: '0 2px 4px rgba(0, 0, 0, 0.2)',
+    textTransform: 'uppercase',
+}));
+
+const iconStyle = computed(() => ({
+    marginRight: '8px',
+}));
+
+const navLinksStyle = computed(() => ({
+    display: 'flex',
+    alignItems: 'center',
+    gap: '20px',
+    fontSize: '0.9rem',
+    textTransform: 'uppercase',
+    color: '#ddd',
+}));
+
+const navLinkStyle = computed(() => ({
+    cursor: 'pointer',
+    transition: 'color 0.2s',
+    padding: '8px 0',
+    color: '#fff',
+}));
+
+const userProfileStyle = computed(() => ({
+    padding: '8px 10px',
+    background: '#f8fff8', 
+    borderRadius: '50%',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '35px',
+    height: '35px',
+    color: '#1d3e21', 
+}));
+
+const profileIconStyle = computed(() => ({
+    fontSize: '1.2rem',
+}));
+
+// --- Control Bar Styles (Search/Total) ---
+const controlBarStyle = computed(() => ({
+    display: 'flex',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    background: '#fff',
+    padding: '16px',
+    borderRadius: '8px',
+    boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+    marginBottom: '32px',
+}));
+
+const searchWrapperStyle = computed(() => ({
+    width: '33.333%',
+    position: 'relative',
+}));
+
+const searchInputStyle = computed(() => ({
+    width: '100%',
+    padding: '10px 10px 10px 40px', // Extra padding for the icon
+    border: '1px solid #ccc',
+    borderRadius: '8px',
+    outline: 'none',
+    transition: 'border-color 0.3s',
+}));
+
+const searchIconStyle = computed(() => ({
+    position: 'absolute',
+    left: '12px',
+    top: '50%',
+    transform: 'translateY(-50%)',
+    width: '20px',
+    height: '20px',
+    color: '#9ca3af',
+}));
+
+const totalReportsStyle = computed(() => ({
+    fontSize: '1.125rem',
+    fontWeight: '600',
+    color: '#1d3e21', // Dark green text
+}));
+
+// --- Error/Loading/No Data Styles ---
+const loadingStyle = computed(() => ({
+    textAlign: 'center',
+    padding: '32px',
+    color: '#dc2626', // Red color for loading indicator
+    fontWeight: '600',
+    fontSize: '1.25rem',
+}));
+
+const spinnerStyle = computed(() => ({
+    display: 'inline-block',
+    width: '24px',
+    height: '24px',
+    marginRight: '12px',
+    verticalAlign: 'middle',
+}));
+
+const errorBoxStyle = computed(() => {
+    let base = {
+        padding: '16px',
+        borderRadius: '8px',
+        boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
+        marginBottom: '16px',
+        fontWeight: '600',
+        border: '1px solid',
+    };
+    if (error.value && error.value.startsWith('✅')) {
+        return { ...base, backgroundColor: '#d4edda', color: '#155724', borderColor: '#c3e6cb' };
+    } else {
+        return { ...base, backgroundColor: '#f8d7da', color: '#721c24', borderColor: '#f5c6cb' };
+    }
+});
+
+const errorTitleStyle = computed(() => ({
+    fontWeight: '700',
+}));
+
+const noDataStyle = computed(() => ({
+    textAlign: 'center',
+    padding: '48px',
+    background: '#fff',
+    borderRadius: '12px',
+    boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+    border: '1px solid #e5e7eb',
+}));
+
+const noDataTitleStyle = computed(() => ({
+    fontSize: '1.5rem',
+    fontWeight: '700',
+    color: '#6b7280',
+}));
+
+const noDataSubTitleStyle = computed(() => ({
+    color: '#9ca3af',
+    marginTop: '8px',
+}));
+
+// --- Table Styles ---
+const tableWrapperStyle = computed(() => ({
+    overflowX: 'auto',
+    background: '#fff',
+    borderRadius: '12px',
+    boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+    border: '1px solid #e5e7eb',
+}));
+
+const tableStyle = computed(() => ({
+    minWidth: '100%',
+    borderCollapse: 'collapse',
+    tableLayout: 'fixed',
+}));
+
+const tableHeaderStyle = computed(() => ({
+    background: '#1d3e21', // Dark green header
+    color: '#fff',
+    position: 'sticky',
+    top: 0,
+    zIndex: 10,
+    borderBottom: '1px solid #e5e7eb',
+}));
+
+const tableBodyStyle = computed(() => ({
+    background: '#fff',
+    borderTop: '1px solid #f3f4f6', 
+}));
+
+const tableRowStyle = computed(() => ({
+    transition: 'background-color 0.15s',
+}));
+
+const noSearchResultsStyle = computed(() => ({
+    textAlign: 'center',
+    padding: '24px',
+    color: '#6b7280',
+    fontStyle: 'italic',
+    fontSize: '1rem',
+}));
+
+
+// Table Helper Functions (Methods)
+
+const tableHeaderCellStyle = (position) => {
+    let borderRadius = {};
+    if (position === 'tl') {
+        borderRadius = { borderTopLeftRadius: '12px' };
+    } else if (position === 'tr') {
+        borderRadius = { borderTopRightRadius: '12px' };
+    }
+
+    return {
+        padding: '12px 16px',
+        textAlign: 'left',
+        fontSize: '0.75rem',
+        fontWeight: '500',
+        textTransform: 'uppercase',
+        letterSpacing: '0.05em',
+        cursor: position !== 'tr' ? 'pointer' : 'default',
+        transition: 'background-color 0.15s',
+        ...borderRadius,
+    };
+};
+
+const tableDataCellStyle = (type) => {
+    let fontWeight = '400';
+    let color = '#4b5563';
+    let textAlign = 'left';
+
+    if (type === 'id') {
+        fontWeight = '500';
+        color = '#1d3e21'; // Dark green text for IDs
+    } else if (type === 'name') {
+        fontWeight = '600';
+        color = '#111827';
+    } else if (type === 'actions') {
+        textAlign = 'center';
+    }
+
+    return {
+        padding: '12px 16px',
+        whiteSpace: 'nowrap',
+        fontSize: '0.875rem',
+        fontWeight: fontWeight,
+        color: color,
+        textAlign: textAlign,
+        borderBottom: '1px solid #f3ff4f6', 
+    };
+};
+
+const actionButtonStyle = (type) => {
+    let color = '#3b82f6'; // Blue for Edit
+
+    if (type === 'delete') {
+        // DELETE STYLES ARE NO LONGER USED, but keeping structure intact
+        color = '#dc2626'; 
+    }
+
+    return {
+        color: color,
+        marginLeft: '4px',
+        marginRight: '4px',
+        padding: '4px 8px',
+        borderRadius: '6px',
+        transition: 'all 0.15s',
+        cursor: 'pointer',
+        border: 'none',
+        background: 'transparent',
+    };
+};
+
+// Modal styles are removed entirely since the modal is gone
 </script>
 
 <template>
-    <div class="p-6 md:p-10 bg-gray-50 min-h-screen font-inter">
-        <h1 class="text-4xl font-extrabold text-red-800 mb-2">Incident Reports</h1>
-        <p class="text-gray-600 mb-6">Manage all filed student misconduct reports and track their status.</p>
+    <div :style="pageContainerStyle">
+        <div :style="navContainerStyle">
+            <div :style="navLeftStyle">
+                <button @click="router.push({ name: 'AdminDashboard' })" :style="navButtonStyle">
+                    <span :style="iconStyle">📊</span> DASHBOARD
+                </button>
+                <div :style="navLinksStyle">
+                    <span @click="router.push({ name: 'AdminStudents' })" :style="navLinkStyle">STUDENTS LIST</span>
+                    <button :style="activeNavButtonStyle">INCIDENT REPORT</button>
+                    <span @click="router.push({ name: 'AddStudent' })" :style="navLinkStyle">ADD STUDENT</span>
+                </div>
+            </div>
+            <div :style="userProfileStyle">
+                <span :style="profileIconStyle">👤</span>
+            </div>
+        </div>
 
-        <!-- Control Bar (Search & Stats) -->
-        <div class="flex flex-col md:flex-row justify-between items-center bg-white p-4 rounded-lg shadow-md mb-8">
+        <h1 :style="mainHeadingStyle">INCIDENT REPORTS</h1>
+        <p :style="subHeadingStyle">Manage all filed student misconduct reports and track their status.</p>
+
+        <div :style="controlBarStyle">
             
-            <!-- Search Bar -->
-            <div class="w-full md:w-1/3 mb-4 md:mb-0 relative">
+            <div :style="searchWrapperStyle">
                 <input 
                     type="text" 
                     v-model="searchTerm" 
                     placeholder="Search by ID, Name, or Offense..."
-                    class="w-full p-2.5 pl-10 border border-gray-300 rounded-lg focus:ring-red-500 focus:border-red-500 transition"
+                    :style="searchInputStyle"
                 >
-                <svg class="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                <svg :style="searchIconStyle" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
             </div>
 
-            <!-- Stats/Total -->
-            <div class="text-lg font-semibold text-red-700">
+            <div :style="totalReportsStyle">
                 Total Reports: {{ incidents.length }}
             </div>
         </div>
 
-        <!-- Status Indicators & Error Display -->
-        <div v-if="isLoading" class="text-center p-8 text-red-600 font-semibold text-xl">
-            <svg class="animate-spin inline-block w-6 h-6 mr-3" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <div v-if="isLoading" :style="loadingStyle">
+            <svg class="animate-spin" :style="spinnerStyle" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                 <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
             </svg>
@@ -216,122 +526,104 @@ onMounted(fetchIncidents);
         </div>
 
         <div v-else-if="error" 
-             :class="{'bg-green-100 border-green-400 text-green-700': error.startsWith('✅'), 'bg-red-100 border-red-400 text-red-700': error.startsWith('❌') || !error.startsWith('✅')}" 
-             class="border p-4 rounded-lg shadow-md mb-4 font-semibold">
-            <p class="font-bold">Message:</p>
+             :style="errorBoxStyle">
+            <p :style="errorTitleStyle">Message:</p>
             <p>{{ error }}</p>
         </div>
 
-        <div v-else-if="incidents.length === 0" class="text-center p-12 bg-white rounded-xl shadow-lg border border-gray-200">
-            <p class="text-2xl font-bold text-gray-500">No Incident Reports Found</p>
-            <p class="text-gray-400 mt-2">The incident database is currently empty.</p>
+        <div v-else-if="incidents.length === 0" :style="noDataStyle">
+            <p :style="noDataTitleStyle">No Incident Reports Found</p>
+            <p :style="noDataSubTitleStyle">The incident database is currently empty.</p>
         </div>
 
-        <!-- Incident Table -->
-        <div v-else class="overflow-x-auto bg-white rounded-xl shadow-lg border border-gray-200">
-            <table class="min-w-full divide-y divide-gray-200">
-                <thead class="bg-red-700 text-white sticky top-0">
+        <div v-else :style="tableWrapperStyle">
+            <table :style="tableStyle">
+                <thead :style="tableHeaderStyle">
                     <tr>
-                        <!-- Table Headers with Sorting -->
                         <th 
-                            class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider cursor-pointer transition hover:bg-red-800 rounded-tl-xl"
+                            :style="tableHeaderCellStyle('tl')"
                             @click="toggleSort('id')"
                         >
                             Report ID {{ getSortIcon('id') }}
                         </th>
                         <th 
-                            class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider cursor-pointer transition hover:bg-red-800"
+                            :style="tableHeaderCellStyle('')"
                             @click="toggleSort('full_name')"
                         >
                             Student Name {{ getSortIcon('full_name') }}
                         </th>
                         <th 
-                            class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider cursor-pointer transition hover:bg-red-800"
+                            :style="tableHeaderCellStyle('')"
                             @click="toggleSort('specific_offense')"
                         >
                             Offense {{ getSortIcon('specific_offense') }}
                         </th>
                         <th 
-                            class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider cursor-pointer transition hover:bg-red-800"
+                            :style="tableHeaderCellStyle('')"
                             @click="toggleSort('date_of_incident')"
                         >
                             Date/Time {{ getSortIcon('date_of_incident') }}
                         </th>
                         <th 
-                            class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider"
+                            :style="tableHeaderCellStyle('')"
                         >
                             Status
                         </th>
                         <th 
-                            class="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider rounded-tr-xl"
+                            :style="tableHeaderCellStyle('tr')"
                         >
                             Actions
                         </th>
                     </tr>
                 </thead>
-                <tbody class="bg-white divide-y divide-gray-100">
-                    <tr v-for="incident in sortedIncidents" :key="incident.id" class="hover:bg-red-50 transition duration-150">
-                        <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-red-700">{{ incident.id }}</td>
-                        <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-800 font-semibold">{{ incident.full_name }}</td>
-                        <td class="px-4 py-3 text-sm text-gray-600">
-                            <span class="font-medium text-red-600">{{ incident.specific_offense }}</span> 
-                            <span class="text-xs text-gray-400 block">({{ incident.offense_category }})</span>
+                <tbody :style="tableBodyStyle">
+                    <tr v-for="incident in sortedIncidents" :key="incident.id" :style="tableRowStyle">
+                        <td :style="tableDataCellStyle('id')">{{ incident.id }}</td>
+                        <td :style="tableDataCellStyle('name')">{{ incident.full_name }}</td>
+                        <td :style="tableDataCellStyle('normal')">
+                            <span :style="{ fontWeight: '500', color: '#dc2626' }">{{ incident.specific_offense }}</span> 
+                            <span :style="{ fontSize: '0.75rem', color: '#9ca3af', display: 'block' }">({{ incident.offense_category }})</span>
                         </td>
-                        <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
+                        <td :style="tableDataCellStyle('normal')">
                             {{ formatDate(incident.date_of_incident, incident.time_of_incident) }}
                         </td>
-                        <td class="px-4 py-3 whitespace-nowrap text-sm font-medium">
+                        <td :style="tableDataCellStyle('normal')">
                             <select 
                                 :value="incident.status"
                                 @change="updateIncidentStatus(incident, $event.target.value)"
-                                :class="[getStatusClasses(incident.status), 'p-1 rounded-full text-xs font-semibold border']"
-                                class="shadow-sm appearance-none cursor-pointer"
+                                :style="{...getStatusClasses(incident.status), ...{padding: '4px 8px', borderRadius: '9999px', fontSize: '0.75rem', fontWeight: '600', border: '1px solid', cursor: 'pointer'}}"
                             >
                                 <option v-for="status in statusOptions" :key="status" :value="status">
                                     {{ status }}
                                 </option>
                             </select>
                         </td>
-                        <td class="px-4 py-3 whitespace-nowrap text-center text-sm font-medium">
-                            <button @click="handleEdit(incident)" class="text-blue-600 hover:text-blue-900 mx-1 p-1 rounded-md hover:bg-blue-100 transition">Edit</button>
-                            <button @click="confirmDelete(incident)" class="text-red-600 hover:text-red-900 mx-1 p-1 rounded-md hover:bg-red-100 transition">Delete</button>
+                        <td :style="tableDataCellStyle('actions')">
+                            <button @click="handleEdit(incident)" :style="actionButtonStyle('view')">Edit</button>
                         </td>
                     </tr>
                     
-                    <!-- No search results row -->
                     <tr v-if="incidents.length > 0 && filteredIncidents.length === 0">
-                        <td colspan="6" class="text-center py-6 text-gray-500 italic">No results found for "{{ searchTerm }}"</td>
+                        <td colspan="6" :style="noSearchResultsStyle">No results found for "{{ searchTerm }}"</td>
                     </tr>
                 </tbody>
             </table>
         </div>
-
-        <!-- Delete Confirmation Modal (NEW) -->
-        <div v-if="showConfirmModal" class="fixed inset-0 bg-gray-900 bg-opacity-70 flex items-center justify-center z-50 transition-opacity duration-300">
-            <div class="bg-white rounded-lg shadow-xl p-6 w-full max-w-sm transform transition-transform duration-300 scale-100">
-                <h3 class="text-lg font-bold text-red-600 mb-4">Confirm Deletion</h3>
-                <p class="text-gray-700 mb-6">
-                    Are you sure you want to permanently delete Incident Report 
-                    <span class="font-bold text-red-800">#{{ incidentToDelete?.id }}</span>? This action cannot be undone.
-                </p>
-                <div class="flex justify-end space-x-3">
-                    <button @click="showConfirmModal = false" class="py-2 px-4 rounded-lg text-gray-700 bg-gray-200 hover:bg-gray-300 transition">
-                        Cancel
-                    </button>
-                    <button @click="deleteIncident" class="py-2 px-4 rounded-lg text-white bg-red-600 hover:bg-red-700 transition">
-                        Delete Permanently
-                    </button>
-                </div>
-            </div>
-        </div>
-
     </div>
 </template>
 
 <style scoped>
-/* Ensure the select dropdown looks clean and overrides default styles */
+/* Basic CSS for the spinner */
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+.animate-spin {
+    animation: spin 1s linear infinite;
+}
+
+/* Custom CSS for select dropdown arrow */
 select {
-    /* Removes default system styling */
     -webkit-appearance: none;
     -moz-appearance: none;
     appearance: none;
@@ -341,5 +633,4 @@ select {
     background-size: 1em;
     padding-right: 2rem !important;
 }
-
 </style>

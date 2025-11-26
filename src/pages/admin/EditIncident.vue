@@ -70,7 +70,6 @@ const fetchIncident = async () => {
         form.description = data.description;
 
     } catch (err) {
-        console.error('Failed to fetch incident for editing:', err);
         incidentFound.value = false;
         submitError.value = `Error loading report: ${err.response?.data?.message || err.message}`;
     } finally {
@@ -83,7 +82,6 @@ const handleSubmit = async (event) => {
     isSubmitting.value = true;
     submitError.value = null;
 
-    // Data structure for PUT request, using the snake_case keys Laravel expects
     const updateData = {
         student_id: form.studentId,
         full_name: form.fullName,
@@ -103,13 +101,11 @@ const handleSubmit = async (event) => {
 
         if (response.status === 200) {
             submitError.value = `✅ Incident Report #${incidentId} updated successfully!`;
-            // Redirect back to the incidents list after a short delay
             setTimeout(() => {
                 router.push({ name: 'AdminIncidents' });
             }, 1500);
         }
     } catch (error) {
-        console.error('Update failed:', error);
         submitError.value = error.response?.data?.message || 'Update failed due to server error.';
     } finally {
         isSubmitting.value = false;
@@ -124,131 +120,318 @@ onMounted(() => {
     }
 });
 
-// Helper function to redirect back to the list
 const goBack = () => {
     router.push({ name: 'AdminIncidents' });
 };
+
+
+// --- START STYLING LOGIC (Helper functions must be defined as standard functions or exposed) ---
+
+// Style Helpers (Functions must be defined outside computed if taking arguments)
+const getInputStyle = (isSubmitting, isSelect = false, isOffenseDisabled = false) => {
+    let base = {
+        marginTop: '4px',
+        display: 'block',
+        width: '100%',
+        borderRadius: '8px',
+        boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
+        padding: '10px',
+        border: '1px solid #ced4da',
+        transition: 'all 0.15s',
+        color: '#1d3e21', // Dark green text
+        backgroundColor: '#f8fff8', // Off-white input background
+        outline: 'none',
+        boxSizing: 'border-box',
+    };
+
+    if (isSubmitting) {
+        base = { ...base, opacity: 0.7, cursor: 'not-allowed' };
+    }
+    
+    if (isSelect) {
+        base = { ...base, appearance: 'none', backgroundColor: '#f8fff8' };
+    }
+
+    if (isOffenseDisabled) {
+        base = { ...base, backgroundColor: '#e9ecef', color: '#6c757d', cursor: 'not-allowed' };
+    }
+
+    return base;
+};
+
+const getSectionContainerStyle = (sectionType) => {
+    let base = {
+        padding: '16px',
+        borderRadius: '12px',
+        border: '1px solid',
+        marginBottom: '32px',
+    };
+    
+    // Applying the general green theme colors
+    if (sectionType === 'student') {
+        return { ...base, borderColor: '#c3e6cb', backgroundColor: '#f0fff0' }; // Light mint/green
+    } else if (sectionType === 'incident') {
+        return { ...base, borderColor: '#ffd591', backgroundColor: '#fffbe5' }; // Light yellow/orange
+    } else if (sectionType === 'offense') {
+        return { ...base, borderColor: '#f5c6cb', backgroundColor: '#fffafa' }; // Light red/pink
+    } else {
+        return { ...base, borderColor: '#ced4da', backgroundColor: '#f8f9fa' }; // Gray
+    }
+};
+
+const getSectionHeaderStyle = (sectionType) => {
+    let color = '#1d3e21';
+    if (sectionType === 'incident') {
+        color = '#d97706'; // Darker orange
+    } else if (sectionType === 'offense') {
+        color = '#dc2626'; // Red
+    }
+    return {
+        fontSize: '1.25rem',
+        fontWeight: '600',
+        color: color,
+        marginBottom: '12px',
+    };
+};
+
+// --- COMPUTED STYLES ---
+
+const containerStyle = computed(() => ({
+    minHeight: '100vh',
+    backgroundColor: '#e6f0e7', // Light green background
+    padding: '1rem',
+    display: 'flex',
+    justifyContent: 'center',
+    fontFamily: 'Inter, Arial, sans-serif',
+}));
+
+const wrapperStyle = computed(() => ({
+    width: '100%',
+    maxWidth: '1024px',
+    backgroundColor: '#fff',
+    borderRadius: '12px',
+    boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+    padding: '24px 40px',
+    marginTop: '50px', // Offset for fixed nav
+}));
+
+const mainTitleStyle = computed(() => ({
+    fontSize: '1.875rem', 
+    fontWeight: '800',
+    color: '#1d3e21',
+    marginBottom: '24px',
+    borderBottom: '4px solid #c3e6cb',
+    paddingBottom: '12px',
+}));
+
+const loadingStyle = computed(() => ({
+    textAlign: 'center',
+    padding: '48px',
+    color: '#1d3e21',
+    fontWeight: '600',
+    fontSize: '1.25rem',
+}));
+
+const notFoundBoxStyle = computed(() => ({
+    textAlign: 'center',
+    padding: '48px',
+    backgroundColor: '#f8d7da',
+    borderRadius: '12px',
+    boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+    border: '1px solid #f5c6cb',
+}));
+
+const notFoundTitleStyle = computed(() => ({
+    fontSize: '1.5rem',
+    fontWeight: '700',
+    color: '#721c24',
+}));
+
+const notFoundSubTitleStyle = computed(() => ({
+    color: '#721c24',
+    marginTop: '8px',
+}));
+
+const goBackButtonStyle = computed(() => ({
+    marginTop: '16px',
+    padding: '8px 16px',
+    backgroundColor: '#1d3e21',
+    color: '#fff',
+    borderRadius: '8px',
+    border: 'none',
+    cursor: 'pointer',
+    transition: 'background-color 0.3s',
+}));
+
+const submitErrorBoxStyle = computed(() => {
+    let base = {
+        border: '1px solid',
+        padding: '16px',
+        borderRadius: '8px',
+        boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
+        fontWeight: '600',
+        marginBottom: '20px',
+    };
+    if (submitError.value && submitError.value.startsWith('✅')) {
+        return { ...base, backgroundColor: '#d4edda', color: '#155724', borderColor: '#c3e6cb' };
+    } else {
+        return { ...base, backgroundColor: '#f8d7da', color: '#721c24', borderColor: '#f5c6cb' };
+    }
+});
+
+const formGroupLabelStyle = computed(() => ({
+    display: 'block',
+    fontSize: '0.875rem',
+    fontWeight: '500',
+    color: '#374151',
+    marginBottom: '4px',
+}));
+
+const submissionButtonContainerStyle = computed(() => ({
+    paddingTop: '16px',
+    display: 'flex',
+    justifyContent: 'space-between',
+    gap: '16px',
+}));
+
+const submitButtonStyle = computed(() => ({
+    flex: 1,
+    padding: '12px 16px',
+    border: 'none',
+    borderRadius: '8px',
+    boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+    fontSize: '1.125rem',
+    fontWeight: '700',
+    color: '#fff',
+    backgroundColor: '#38763a',
+    transition: 'all 0.3s',
+    cursor: 'pointer',
+    outline: 'none',
+}));
+
+const cancelButtonStyle = computed(() => ({
+    padding: '12px 16px',
+    borderRadius: '8px',
+    boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
+    fontSize: '1.125rem',
+    fontWeight: '700',
+    backgroundColor: '#6b7280',
+    color: '#fff',
+    transition: 'background-color 0.3s',
+    border: 'none',
+    cursor: 'pointer',
+}));
 </script>
 
 <template>
-    <div class="min-h-screen bg-gray-100 p-4 sm:p-8 flex justify-center font-inter">
-        <div class="w-full max-w-4xl bg-white rounded-xl shadow-2xl p-6 md:p-10">
-            <h1 class="text-3xl font-extrabold text-indigo-700 mb-6 border-b-4 border-indigo-200 pb-3">
+    <div :style="containerStyle">
+        <div :style="wrapperStyle">
+            <h1 :style="mainTitleStyle">
                 Edit Incident Report #{{ incidentId }}
             </h1>
 
-            <div v-if="isLoading" class="text-center p-12 text-indigo-600 font-semibold text-xl">
+            <div v-if="isLoading" :style="loadingStyle">
                 Loading report data...
             </div>
 
-            <div v-else-if="!incidentFound" class="text-center p-12 bg-red-100 rounded-xl shadow-lg border border-red-400">
-                <p class="text-2xl font-bold text-red-700">Error: Report Not Found</p>
-                <p class="text-red-500 mt-2">The incident report with ID {{ incidentId }} does not exist or could not be loaded.</p>
-                <button @click="goBack" class="mt-4 py-2 px-4 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">Go Back to List</button>
+            <div v-else-if="!incidentFound" :style="notFoundBoxStyle">
+                <p :style="notFoundTitleStyle">Error: Report Not Found</p>
+                <p :style="notFoundSubTitleStyle">The incident report with ID {{ incidentId }} does not exist or could not be loaded.</p>
+                <button @click="goBack" :style="goBackButtonStyle">Go Back to List</button>
             </div>
 
-            <form v-else @submit="handleSubmit" class="space-y-8">
-                <div v-if="submitError" 
-                     :class="{'bg-green-100 border-green-400 text-green-700': submitError.startsWith('✅'), 'bg-red-100 border-red-400 text-red-700': !submitError.startsWith('✅')}" 
-                     class="border p-4 rounded-lg shadow-md font-semibold">
+            <form v-else @submit="handleSubmit" :style="{ display: 'flex', flexDirection: 'column', gap: '32px' }">
+                <div v-if="submitError" :style="submitErrorBoxStyle">
                     <p>{{ submitError }}</p>
                 </div>
 
-                <!-- Section 1: Student Information -->
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4 border border-indigo-200 p-4 rounded-xl bg-indigo-50/50">
-                    <div class="md:col-span-2">
-                        <h2 class="text-xl font-semibold text-indigo-600 mb-3">Student Details</h2>
-                    </div>
-                    
-                    <div class="col-span-1">
-                        <label for="studentId" class="block text-sm font-medium text-gray-700">Student ID Number</label>
-                        <input type="text" id="studentId" v-model="form.studentId" required :disabled="isSubmitting"
-                            class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-2.5 border transition duration-150">
-                    </div>
-                    <div class="col-span-1">
-                        <label for="fullName" class="block text-sm font-medium text-gray-700">Full Name</label>
-                        <input type="text" id="fullName" v-model="form.fullName" required :disabled="isSubmitting"
-                            class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-2.5 border transition duration-150">
-                    </div>
-                    <div class="col-span-1">
-                        <label for="program" class="block text-sm font-medium text-gray-700">Program</label>
-                        <input type="text" id="program" v-model="form.program" :disabled="isSubmitting"
-                            class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-2.5 border transition duration-150">
-                    </div>
-                    <div class="col-span-1">
-                        <label for="yearLevel" class="block text-sm font-medium text-gray-700">Year Level</label>
-                        <select id="yearLevel" v-model="form.yearLevel" :disabled="isSubmitting"
-                            class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-2.5 border bg-white transition duration-150">
-                            <option v-for="level in yearLevels" :key="level" :value="level">{{ level }}</option>
-                        </select>
-                    </div>
-                </div>
-
-                <!-- Section 2: Incident Details -->
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4 border border-yellow-300 p-4 rounded-xl bg-yellow-50/50">
-                    <div class="md:col-span-2">
-                        <h2 class="text-xl font-semibold text-yellow-700 mb-3">Incident Details</h2>
-                    </div>
-
-                    <div class="col-span-1">
-                        <label for="date" class="block text-sm font-medium text-gray-700">Date of Incident</label>
-                        <input type="date" id="date" v-model="form.dateOfIncident" required :disabled="isSubmitting"
-                            class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-2.5 border transition duration-150">
-                    </div>
-
-                    <div class="col-span-1">
-                        <label for="time" class="block text-sm font-medium text-gray-700">Time of Incident</label>
-                        <input type="time" id="time" v-model="form.timeOfIncident" required :disabled="isSubmitting"
-                            class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-2.5 border transition duration-150">
-                    </div>
-
-                    <div class="md:col-span-2">
-                        <label for="location" class="block text-sm font-medium text-gray-700">Location of Incident</label>
-                        <input type="text" id="location" v-model="form.location" required :disabled="isSubmitting"
-                            class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-2.5 border transition duration-150">
+                <div :style="getSectionContainerStyle('student')">
+                    <h2 :style="getSectionHeaderStyle('student')">Student Details</h2>
+                    <div :style="{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1.5rem' }">
+                        
+                        <div :style="{ gridColumn: 'span 1' }">
+                            <label for="studentId" :style="formGroupLabelStyle">Student ID Number</label>
+                            <input type="text" id="studentId" v-model="form.studentId" required :disabled="isSubmitting"
+                                :style="getInputStyle(isSubmitting)">
+                        </div>
+                        <div :style="{ gridColumn: 'span 1' }">
+                            <label for="fullName" :style="formGroupLabelStyle">Full Name</label>
+                            <input type="text" id="fullName" v-model="form.fullName" required :disabled="isSubmitting"
+                                :style="getInputStyle(isSubmitting)">
+                        </div>
+                        <div :style="{ gridColumn: 'span 1' }">
+                            <label for="program" :style="formGroupLabelStyle">Program</label>
+                            <input type="text" id="program" v-model="form.program" :disabled="isSubmitting"
+                                :style="getInputStyle(isSubmitting)">
+                        </div>
+                        <div :style="{ gridColumn: 'span 1' }">
+                            <label for="yearLevel" :style="formGroupLabelStyle">Year Level</label>
+                            <select id="yearLevel" v-model="form.yearLevel" :disabled="isSubmitting"
+                                :style="getInputStyle(isSubmitting, true)">
+                                <option v-for="level in yearLevels" :key="level" :value="level">{{ level }}</option>
+                            </select>
+                        </div>
                     </div>
                 </div>
 
-                <!-- Section 3: Offense Type (Two-Tier Dropdown) -->
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4 border border-red-300 p-4 rounded-xl bg-red-50/50">
-                    <div class="md:col-span-2">
-                        <h2 class="text-xl font-semibold text-red-600 mb-3">Offense Type</h2>
-                    </div>
+                <div :style="getSectionContainerStyle('incident')">
+                    <h2 :style="getSectionHeaderStyle('incident')">Incident Details</h2>
+                    <div :style="{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1.5rem' }">
+                        
+                        <div :style="{ gridColumn: 'span 1' }">
+                            <label for="date" :style="formGroupLabelStyle">Date of Incident</label>
+                            <input type="date" id="date" v-model="form.dateOfIncident" required :disabled="isSubmitting"
+                                :style="getInputStyle(isSubmitting)">
+                        </div>
 
-                    <div class="col-span-1">
-                        <label for="offenseCategory" class="block text-sm font-medium text-gray-700 font-bold">1. Offense Category</label>
-                        <select id="offenseCategory" v-model="form.offenseCategory" required :disabled="isSubmitting"
-                            class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-2.5 border bg-white transition duration-150">
-                            <option v-for="category in offenseCategories" :key="category.name" :value="category.name">{{ category.name }}</option>
-                        </select>
-                    </div>
+                        <div :style="{ gridColumn: 'span 1' }">
+                            <label for="time" :style="formGroupLabelStyle">Time of Incident</label>
+                            <input type="time" id="time" v-model="form.timeOfIncident" required :disabled="isSubmitting"
+                                :style="getInputStyle(isSubmitting)">
+                        </div>
 
-                    <div class="col-span-1">
-                        <label for="specificOffense" class="block text-sm font-medium text-gray-700 font-bold">2. Specific Offense</label>
-                        <select id="specificOffense" v-model="form.specificOffense" :disabled="!form.offenseCategory || isSubmitting" required
-                            class="mt-1 block w-full rounded-lg shadow-sm p-2.5 border bg-white transition duration-150"
-                            :class="{ 'bg-gray-200 text-gray-500 cursor-not-allowed': !form.offenseCategory }">
-                            <option v-for="offense in availableOffenses" :key="offense" :value="offense">{{ offense }}</option>
-                        </select>
+                        <div :style="{ gridColumn: 'span 2' }">
+                            <label for="location" :style="formGroupLabelStyle">Location of Incident</label>
+                            <input type="text" id="location" v-model="form.location" required :disabled="isSubmitting"
+                                :style="getInputStyle(isSubmitting)">
+                        </div>
                     </div>
                 </div>
 
-                <!-- Section 4: Description -->
-                <div class="border border-gray-300 p-4 rounded-xl bg-gray-50/50">
-                    <h2 class="text-xl font-semibold text-gray-700 mb-3">Description</h2>
-                    <label for="description" class="block text-sm font-medium text-gray-700">Detailed Description of Incident (Required)</label>
+                <div :style="getSectionContainerStyle('offense')">
+                    <h2 :style="getSectionHeaderStyle('offense')">Offense Type</h2>
+                    <div :style="{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1.5rem' }">
+                        
+                        <div :style="{ gridColumn: 'span 1' }">
+                            <label for="offenseCategory" :style="formGroupLabelStyle">1. Offense Category</label>
+                            <select id="offenseCategory" v-model="form.offenseCategory" required :disabled="isSubmitting"
+                                :style="getInputStyle(isSubmitting, true)">
+                                <option v-for="category in offenseCategories" :key="category.name" :value="category.name">{{ category.name }}</option>
+                            </select>
+                        </div>
+
+                        <div :style="{ gridColumn: 'span 1' }">
+                            <label for="specificOffense" :style="formGroupLabelStyle">2. Specific Offense</label>
+                            <select id="specificOffense" v-model="form.specificOffense" :disabled="!form.offenseCategory || isSubmitting" required
+                                :style="getInputStyle(isSubmitting, true, !form.offenseCategory)">
+                                <option v-for="offense in availableOffenses" :key="offense" :value="offense">{{ offense }}</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div :style="getSectionContainerStyle('description')">
+                    <h2 :style="getSectionHeaderStyle('description')">Description</h2>
+                    <label for="description" :style="formGroupLabelStyle">Detailed Description of Incident (Required)</label>
                     <textarea id="description" v-model="form.description" rows="5" required :disabled="isSubmitting"
-                        class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-2.5 border transition duration-150"></textarea>
+                        :style="{...getInputStyle(isSubmitting), height: '120px'}"></textarea>
                 </div>
 
-                <!-- Submission Button -->
-                <div class="pt-4 flex justify-between space-x-4">
-                    <button type="button" @click="goBack" class="py-3 px-4 rounded-lg shadow-md text-lg font-bold bg-gray-300 text-gray-800 hover:bg-gray-400 transition duration-300">
+                <div :style="submissionButtonContainerStyle">
+                    <button type="button" @click="goBack" :style="cancelButtonStyle">
                         Cancel
                     </button>
-                    <button type="submit" :disabled="isSubmitting"
-                        class="flex-1 py-3 px-4 border border-transparent rounded-lg shadow-xl text-lg font-bold text-white bg-green-600 hover:bg-green-800 focus:outline-none focus:ring-4 focus:ring-offset-2 focus:ring-green-500 transition duration-300 ease-in-out transform hover:-translate-y-0.5"
-                        :class="{ 'opacity-50 cursor-not-allowed': isSubmitting }">
+                    <button type="submit" :disabled="isSubmitting" :style="submitButtonStyle">
                         {{ isSubmitting ? 'Updating...' : 'Save Changes' }}
                     </button>
                 </div>
