@@ -2,75 +2,97 @@
     <div class="report-page">
         <header class="report-header-bar">
             <div class="report-title-left">
-                <span class="header-icon"></span>
+                <svg viewBox="0 0 24 24" fill="currentColor" class="header-icon-svg">
+                    <path d="M4 4h6v6H4V4zm0 10h6v6H4v-6zm10-10h6v6h-6V4zm0 10h6v6h-6v-6z"/>
+                </svg>
                 REPORT AN INCIDENT
             </div>
             <div class="profile-icon-right">
-                <span class="header-icon"></span>
+                <svg viewBox="0 0 24 24" fill="currentColor" class="header-icon-svg-profile">
+                    <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+                </svg>
             </div>
         </header>
 
         <div class="form-container">
-            <h1 class="main-title-text">STUDENT MISCONDUCT REPORT MANAGEMENT</h1>
+            <h1 class="main-title-text">STUDMENT MISCONDUCT REPORT MANAGEMENT</h1>
+            
+            <div v-if="isSubmitting" class="submission-status submission-loading">
+                Submitting report... Please wait.
+            </div>
+
+            <div v-else-if="submitError" class="submission-status submission-error">
+                🚨 Submission Error: {{ submitError }}
+            </div>
 
             <form @submit.prevent="handleSubmit" class="incident-form-grid">
 
                 <div class="input-group">
                     <label for="studentId">Student ID</label>
-                    <input type="text" id="studentId" v-model="form.studentId">
+                    <input type="text" id="studentId" v-model="form.studentId" required>
+                    <p v-if="validationErrors.studentId" class="error-message">{{ validationErrors.studentId[0] }}</p>
                 </div>
 
                 <div class="input-group">
                     <label for="fullName">Full Name</label>
-                    <input type="text" id="fullName" v-model="form.fullName">
+                    <input type="text" id="fullName" v-model="form.fullName" required>
+                    <p v-if="validationErrors.fullName" class="error-message">{{ validationErrors.fullName[0] }}</p>
                 </div>
 
                 <div class="input-group">
                     <label for="program">Program</label>
-                    <select id="program" v-model="form.program">
+                    <select id="program" v-model="form.program" required>
                         <option value="" disabled>Select Program</option>
                         <option v-for="program in programOptions" :key="program" :value="program">
                             {{ program }}
                         </option>
                     </select>
+                    <p v-if="validationErrors.program" class="error-message">{{ validationErrors.program[0] }}</p>
                 </div>
 
                 <div class="input-group">
                     <label for="yearLevel">Year Level</label>
-                    <select id="yearLevel" v-model="form.yearLevel">
+                    <select id="yearLevel" v-model="form.yearLevel" required>
                         <option value="" disabled>Select Year Level</option>
                         <option v-for="year in yearLevelOptions" :key="year" :value="year">
                             {{ year }}
                         </option>
                     </select>
+                    <p v-if="validationErrors.yearLevel" class="error-message">{{ validationErrors.yearLevel[0] }}</p>
                 </div>
                 
                 <div class="input-group">
                     <label for="section">Section</label>
                     <input type="text" id="section" v-model="form.section">
+                    <p v-if="validationErrors.section" class="error-message">{{ validationErrors.section[0] }}</p>
                 </div>
 
                 <div class="input-group">
                     <label for="location">Location</label>
-                    <input type="text" id="location" v-model="form.location">
+                    <input type="text" id="location" v-model="form.location" required>
+                    <p v-if="validationErrors.location" class="error-message">{{ validationErrors.location[0] }}</p>
                 </div>
                 
-                <div class="date-time-container">
+                <div class="date-time-container input-group">
                     <label for="dateOfIncident" class="date-time-label">Date of Incident</label>
-                    <input type="date" id="dateOfIncident" v-model="form.dateOfIncident"> 
+                    <input type="date" id="dateOfIncident" v-model="form.dateOfIncident" required> 
+                    <p v-if="validationErrors.dateOfIncident" class="error-message">{{ validationErrors.dateOfIncident[0] }}</p>
                 </div>
-                <div class="date-time-container">
+                
+                <div class="date-time-container input-group">
                     <label for="timeOfIncident" class="date-time-label">Time of Incident</label>
-                    <input type="time" id="timeOfIncident" v-model="form.timeOfIncident"> 
+                    <input type="time" id="timeOfIncident" v-model="form.timeOfIncident" required> 
+                    <p v-if="validationErrors.timeOfIncident" class="error-message">{{ validationErrors.timeOfIncident[0] }}</p>
                 </div>
 
                 <div class="input-group">
                     <label for="offenseCategory">Offense Category</label>
-                    <select id="offenseCategory" v-model="form.offenseCategory">
+                    <select id="offenseCategory" v-model="form.offenseCategory" required>
                         <option value="" disabled>Select Category</option>
                         <option value="Minor Offense">Minor Offense</option>
                         <option value="Major Offense">Major Offense</option>
                     </select>
+                    <p v-if="validationErrors.offenseCategory" class="error-message">{{ validationErrors.offenseCategory[0] }}</p>
                 </div>
 
                 <div class="input-group">
@@ -79,6 +101,7 @@
                         id="specificOffense" 
                         v-model="form.specificOffense" 
                         :disabled="!form.offenseCategory"
+                        required
                     >
                         <option value="" disabled>
                             {{ form.offenseCategory ? 'Select specific offense' : 'Select category first' }}
@@ -91,19 +114,21 @@
                             {{ offense }}
                         </option>
                     </select>
+                    <p v-if="validationErrors.specificOffense" class="error-message">{{ validationErrors.specificOffense[0] }}</p>
                 </div>
                 
                 <div class="input-group description-group full-span">
                     <label for="description">Description</label>
-                    <textarea id="description" v-model="form.description"></textarea>
+                    <textarea id="description" v-model="form.description" required></textarea>
+                    <p v-if="validationErrors.description" class="error-message">{{ validationErrors.description[0] }}</p>
                 </div>
 
                 <div class="form-actions full-span">
-                    <button type="button" class="btn-cancel" @click="router.back()">
+                    <button type="button" class="btn-cancel" @click="resetForm">
                         Cancel
                     </button>
-                    <button type="submit" class="btn-save">
-                        Save Incident
+                    <button type="submit" class="btn-save" :disabled="isSubmitting">
+                        {{ isSubmitting ? 'Filing...' : 'Save Incident' }}
                     </button>
                 </div>
             </form>
@@ -114,14 +139,27 @@
             class="notifier"
             :class="{'notifier-success': notifier.type === 'success', 'notifier-error': notifier.type === 'error'}"
         >
-            {{ notifier.message }}
+             <div v-if="notifier.type === 'success'" class="recommendation-content">
+                <p class="notification-title">✅ Report Filed! System Recommendation:</p>
+                <div class="recommendation-box">
+                    <strong>{{ recommendationText }}</strong>
+                </div>
+                <div class="notifier-actions">
+                    <button @click="resetNotifier" class="btn-notifier-close">File New</button>
+                    <button @click="navigateToDetails" class="btn-notifier-view">View Details</button>
+                 </div>
+            </div>
+            <div v-else>
+                {{ notifier.message }}
+            </div>
         </div>
-        </div>
+    </div>
 </template>
 
 <script setup>
 import { reactive, ref, computed, watch } from 'vue';
-import { useRouter } from 'vue-router'; 
+import { useRouter } from 'vue-router';
+import api from '@/services/api'; // Import your Axios instance
 
 const router = useRouter(); 
 
@@ -159,12 +197,19 @@ const form = reactive({
     description: '',
 });
 
-// --- NOTIFIER STATE ---
+// --- API/Submission State ---
+const isSubmitting = ref(false);
+const submitError = ref(null);
+const validationErrors = ref({}); // Holds backend 422 errors
+
+// --- Optimization/Notifier State ---
 const notifier = reactive({
     visible: false,
     message: '',
     type: 'success', // 'success' or 'error'
 });
+const recommendationText = ref('');
+const newIncidentId = ref(null);
 
 // --- Computed Property for Filtering ---
 const filteredSpecificOffenses = computed(() => {
@@ -179,79 +224,115 @@ watch(() => form.offenseCategory, (newCategory, oldCategory) => {
     }
 });
 
-// --- Notifier Function ---
+// --- Notifier Functions ---
 const showNotifier = (message, type = 'success', duration = 3000) => {
     notifier.message = message;
     notifier.type = type;
     notifier.visible = true;
 
     setTimeout(() => {
-        notifier.visible = false;
+        if (notifier.type === 'error') {
+             notifier.visible = false;
+        }
+        // Success notification remains visible until explicitly closed or navigated away
     }, duration);
+};
+
+const resetNotifier = () => {
+    notifier.visible = false;
+};
+
+// --- Reset Form Function ---
+const resetForm = () => {
+    form.studentId = '';
+    form.fullName = '';
+    form.program = '';
+    form.yearLevel = '';
+    form.section = '';
+    form.dateOfIncident = '';
+    form.timeOfIncident = '';
+    form.location = '';
+    form.offenseCategory = '';
+    form.specificOffense = '';
+    form.description = '';
+};
+
+// --- Navigation ---
+const navigateToDetails = () => {
+    if (newIncidentId.value) {
+        router.push({ name: 'IncidentDetails', params: { id: newIncidentId.value } });
+    }
+    resetNotifier();
 };
 
 // ------------------------------------------------------------------
 // --- VALIDATION AND SUBMISSION METHOD ---
 // ------------------------------------------------------------------
-const handleSubmit = () => {
-    // Define all required fields (excluding section)
-    const requiredFields = [
-        'studentId', 'fullName', 'program', 'yearLevel', 
-        'dateOfIncident', 'timeOfIncident', 'location', 
-        'offenseCategory', 'specificOffense', 'description'
-    ];
+const handleSubmit = async () => {
+    submitError.value = null;
+    validationErrors.value = {}; 
 
-    let missingFields = [];
+    // --- Client-side Required Field Check (Optional, backend handles strict) ---
+    const requiredFields = [ 'studentId', 'fullName', 'program', 'yearLevel', 'dateOfIncident', 'timeOfIncident', 'location', 'offenseCategory', 'specificOffense', 'description'];
+    let missingFields = requiredFields.filter(field => !form[field] || String(form[field]).trim() === '');
     
-    // Check for missing input
-    for (const field of requiredFields) {
-        if (!form[field] || String(form[field]).trim() === '') {
-            // Provide a user-friendly name for the missing field
-            const friendlyName = field.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
-            missingFields.push(friendlyName);
-        }
-    }
-
-    // If there are missing fields, stop submission and notify user
     if (missingFields.length > 0) {
-        showNotifier(`Please fill out the following required fields: ${missingFields.join(', ')}`, 'error', 5000);
-        console.error('Submission blocked: Missing required fields.', missingFields);
-        return; // HALTS the submission process
+        const friendlyNames = missingFields.map(f => f.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase()));
+        submitError.value = `Please fill out all required fields: ${friendlyNames.join(', ')}`;
+        return; 
     }
-
-    // If validation passes:
-    const payload = {
-        studentId: form.studentId,
-        fullName: form.fullName,
-        program: form.program,
-        yearLevel: form.yearLevel,
-        section: form.section,
-        dateOfIncident: form.dateOfIncident,
-        timeOfIncident: form.timeOfIncident,
-        location: form.location,
-        offenseCategory: form.offenseCategory,
-        specificOffense: form.specificOffense,
-        description: form.description,
-    };
+    // -------------------------------------------------------------------------
     
-    console.log('Submitting Incident:', payload);
+    isSubmitting.value = true;
+    const payload = JSON.parse(JSON.stringify(form));
+    
+    try {
+        const response = await api.post('/incidents', payload); 
 
-    // Simulate API submission and show success notification
-    setTimeout(() => {
-        showNotifier('✅ Incident Successfully Reported!', 'success');
-    }, 1500);
+        if (response.status === 201 || response.status === 200) {
+            const data = response.data;
+            
+            // 🎯 OPTIMIZATION: Extract recommendation and ID
+            recommendationText.value = data.recommendation;
+            newIncidentId.value = data.incident.id;
+
+            // Show success notification with special modal-like content
+            showNotifier('✅ Incident Successfully Reported!', 'success', 60000); 
+            resetForm();
+        }
+    } catch (error) {
+        let errorMessage = 'An unexpected error occurred.';
+        if (error.response) {
+            if (error.response.status === 422) {
+                validationErrors.value = error.response.data.errors;
+                errorMessage = 'Validation failed. Please correct the highlighted fields.';
+            } else if (error.response.data && error.response.data.message) {
+                errorMessage = error.response.data.message;
+            } else {
+                errorMessage = `Server Error (${error.response.status}).`;
+            }
+        } else {
+            errorMessage = 'Network Error: Could not connect to the API server.';
+        }
+        submitError.value = errorMessage;
+        showNotifier(errorMessage, 'error', 5000);
+
+    } finally {
+        isSubmitting.value = false;
+    }
 };
 </script>
 
 <style scoped>
-/* --- EXISTING STYLES (UNCHANGED) --- */
+/* --- STYLES FOR THE GREEN DESIGN (Based on provided structure) --- */
 
 .report-page {
     width: 100%;
     min-height: 100vh;
-    background-color: #EAF9E7; /* Pale Green Background */
+    background-color: #EAF9E7; 
     font-family: Arial, sans-serif;
     padding-top: 50px;
+    box-sizing: border-box;
 }
 
 /* --- HEADER BAR STYLES --- */
@@ -265,10 +346,11 @@ const handleSubmit = () => {
     align-items: center;
     padding: 15px 40px;
     height: 50px;
-    background-color: #51A687; 
+    background-color: #51A687; /* Header background color */
     color: white;
     font-weight: bold;
     z-index: 10;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
 }
 
 .report-title-left {
@@ -277,12 +359,17 @@ const handleSubmit = () => {
     font-size: 1.1rem;
 }
 
-.header-icon {
-    width: 18px;
-    height: 18px;
-    background-color: white;
+/* Placeholder icons updated to SVG for better styling */
+.header-icon-svg {
+    width: 24px;
+    height: 24px;
+    color: white;
     margin-right: 8px;
-    border-radius: 2px;
+}
+.header-icon-svg-profile {
+     width: 28px;
+    height: 28px;
+    color: #51A687;
 }
 
 .profile-icon-right {
@@ -300,7 +387,7 @@ const handleSubmit = () => {
     max-width: 1000px;
     margin: 20px auto;
     padding: 30px;
-    background-color: #51A687; 
+    background-color: #51A687; /* Main container background color */
     border-radius: 10px;
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
     border: 1px solid #448f72; 
@@ -318,7 +405,7 @@ const handleSubmit = () => {
 /* --- GRID LAYOUT --- */
 .incident-form-grid {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: repeat(2, 1fr); /* Two columns */
     gap: 20px 30px; 
     align-items: start;
 }
@@ -327,7 +414,7 @@ const handleSubmit = () => {
     grid-column: 1 / -1;
 }
 
-/* --- INPUT FIELD STYLES (Includes select styling) --- */
+/* --- INPUT FIELD STYLES --- */
 .input-group label, .date-time-label {
     display: block;
     font-size: 0.9rem;
@@ -364,12 +451,12 @@ const handleSubmit = () => {
     min-height: 200px;
 }
 
-/* Style for disabled select/input to clearly indicate it's inactive */
-.input-group select:disabled {
-    background-color: #f0f0f0;
-    cursor: not-allowed;
+/* Error feedback */
+.error-message {
+    color: #ffdddd; /* Light red/pink over green */
+    font-size: 0.8rem;
+    margin-top: 5px;
 }
-
 
 /* --- BUTTONS --- */
 .form-actions {
@@ -388,35 +475,24 @@ const handleSubmit = () => {
     font-weight: bold;
     cursor: pointer;
     transition: background-color 0.2s;
-    background-color: #323A36; 
+    background-color: #323A36; /* Dark Green/Gray button */
     color: white;
 }
 
-.form-actions button:hover {
+.form-actions button:hover:not(:disabled) {
     background-color: #1a1e1b;
 }
 
-/* --- Responsive Adjustments --- */
-@media (max-width: 768px) {
-    .incident-form-grid {
-        grid-template-columns: 1fr;
-        gap: 20px;
-    }
-
-    .form-actions {
-        justify-content: space-around;
-    }
+.form-actions button:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
 }
 
-/* ============================== */
-/* === UPDATED NOTIFIER STYLES (Center) === */
-/* ============================== */
-
+/* --- NOTIFIER (MODIFIED to be success modal) --- */
 .notifier {
     position: fixed;
-    top: 50%; /* Position vertically in the center */
+    top: 50%;
     left: 50%;
-    /* Use translate to account for the element's size, ensuring true centering */
     transform: translate(-50%, -50%); 
     padding: 15px 30px;
     border-radius: 8px;
@@ -424,39 +500,83 @@ const handleSubmit = () => {
     font-weight: bold;
     box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
     z-index: 1000;
-    opacity: 0;
-    animation: fadeInOut 3s ease-in-out forwards; 
+    width: 350px; 
+    animation: none; /* Removed generic fade-in-out animation */
 }
 
 .notifier-success {
-    background-color: #38a169; /* Darker Green for Success */
+    background-color: #4CAF50; /* Green Success */
+    min-height: 180px; 
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+.recommendation-content {
+    color: white;
+    margin-bottom: 10px;
+}
+.notification-title {
+    font-size: 1.1rem;
+    margin-bottom: 5px;
+}
+.recommendation-box {
+    padding: 8px;
+    background-color: #81C784; /* Lighter shade of success */
+    border-radius: 4px;
+    color: #1b5e20; /* Dark green text */
+    font-size: 1.1rem;
+    word-wrap: break-word;
+}
+.notifier-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 15px;
+}
+.btn-notifier-close, .btn-notifier-view {
+    padding: 8px 15px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
+}
+.btn-notifier-close {
+    background-color: #fff;
+    color: #444;
+}
+.btn-notifier-view {
+    background-color: #38a169;
+    color: white;
 }
 
 .notifier-error {
     background-color: #e53e3e; /* Red for Error */
+    animation: fadeInOut 5s ease-in-out forwards;
 }
 
-/* CSS Animation adjusted for center positioning */
+/* Responsive Adjustments */
+@media (max-width: 768px) {
+    .incident-form-grid {
+        grid-template-columns: 1fr;
+        gap: 20px;
+    }
+    .form-container {
+        padding: 20px;
+    }
+    .report-header-bar {
+        padding: 15px 20px;
+    }
+    .form-actions {
+        justify-content: space-around;
+    }
+}
+
+/* Keyframes for error notifier */
 @keyframes fadeInOut {
-    0% {
-        opacity: 0;
-        /* Start slightly above the center */
-        transform: translate(-50%, calc(-50% + 20px)); 
-    } 
-    10% {
-        opacity: 1;
-        /* Move to true center */
-        transform: translate(-50%, -50%); 
-    } 
-    90% {
-        opacity: 1;
-        /* Hold visibility at true center */
-        transform: translate(-50%, -50%); 
-    } 
-    100% {
-        opacity: 0;
-        /* Fade out and move slightly below the center */
-        transform: translate(-50%, calc(-50% - 20px)); 
-    } 
+    0% { opacity: 0; transform: translate(-50%, calc(-50% + 20px)); } 
+    10% { opacity: 1; transform: translate(-50%, -50%); } 
+    90% { opacity: 1; transform: translate(-50%, -50%); } 
+    100% { opacity: 0; transform: translate(-50%, calc(-50% - 20px)); } 
 }
 </style>

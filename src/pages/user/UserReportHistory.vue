@@ -31,7 +31,8 @@
           </thead>
           <tbody>
             <tr v-for="report in reports" :key="report.id" :style="tableRowStyle" @click="viewReportDetails(report.id)">
-              <td :style="tableCellStyle">{{ report.id }}</td> <td :style="tableCellStyle">{{ report.student_name }}</td>
+              <td :style="tableCellStyle">{{ report.id }}</td> 
+              <td :style="tableCellStyle">{{ report.student_name }}</td>
               <td :style="tableCellStyle">{{ report.misconduct_type }}</td>
               <td :style="tableCellStyle">{{ formatDateTime(report.incident_date) }}</td>
               <td :style="statusStyle(report.status)">
@@ -77,34 +78,23 @@ export default {
         const isLoading = ref(true);
         const errorMessage = ref(null);
         
-        // Removed currentUserId constant. The filtering is now done on the backend 
-        // using the token attached to the request, not an ID in the URL.
-        
         const fetchReports = async () => {
             isLoading.value = true;
             errorMessage.value = null;
             try {
-                // 1. Get the authenticated user data (required to check if the user is logged in)
                 const user = await getAuthUser();
                 
                 if (!user) {
                     errorMessage.value = "User not authenticated or profile not loaded.";
-                    // Optionally redirect to login
-                    // router.push({ name: 'Login' }); 
                     return;
                 }
 
-                // 2. API Call: This now targets the secure `/incidents` endpoint.
-                // The Laravel backend automatically uses the Auth token to filter
-                // records to ONLY those filed by the current user (since their role is not 'admin').
                 const response = await api.get('/incidents');
                 
                 if (response.status === 200) {
-                    // Check if response.data is an array (Laravel returns an array directly)
                     const dataArray = Array.isArray(response.data) ? response.data : [];
 
                     reports.value = dataArray.map(report => ({
-                        // Ensure all these fields map correctly to your Incident model attributes
                         id: report.id,
                         student_name: report.full_name, 
                         misconduct_type: report.specific_offense, 
@@ -114,7 +104,6 @@ export default {
                 }
             } catch (error) {
                 console.error("Error fetching user reports:", error);
-                // Check for a specific 403 or 401 error if the middleware failed
                 if (error.response && (error.response.status === 401 || error.response.status === 403)) {
                     errorMessage.value = "Access Denied. Please log in again.";
                 } else {
@@ -134,11 +123,10 @@ export default {
         
         const formatDateTime = (dateString) => {
             if (!dateString) return 'N/A';
-            // You might want to combine date_of_incident and time_of_incident if needed
             return new Date(dateString).toLocaleDateString('en-US');
         }
 
-        // --- STYLES (Inline Styles remain the same) ---
+        // --- STYLES (Inline Styles restored to include viewButtonStyle) ---
         const themeColors = {
             darkGreen: '#1d3e21',
             mediumGreen: '#4CAF50',
@@ -261,7 +249,7 @@ export default {
             } else if (status === 'Pending') {
                 backgroundColor = '#d1ecf1';
                 color = '#0c5460';
-            } else if (status === 'Closed') { // Added 'Closed' style
+            } else if (status === 'Closed') {
                  backgroundColor = '#e2e6ea';
                  color = '#495057';
             }
@@ -278,7 +266,7 @@ export default {
                 minWidth: '100px',
             };
         };
-
+        
         const viewButtonStyle = computed(() => ({
             padding: '5px 10px',
             backgroundColor: themeColors.mediumGreen,
