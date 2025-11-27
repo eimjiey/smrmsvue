@@ -13,8 +13,12 @@
 
             </div>
             
-            <div class="profile-icon">
-                <span class="material-icons"></span>
+            <div class="user-controls"> <button class="logout-btn" @click="handleLogout">
+                    LOGOUT
+                </button>
+                <div class="profile-icon">
+                    <span class="material-icons"></span>
+                </div>
             </div>
         </header>
 
@@ -46,7 +50,6 @@
                 </div>
             </div>
         </div>
-
     </div>
 </template>
 
@@ -63,10 +66,20 @@ export default {
             // Navigates to the report filing form
             this.$router.push('/file-incident-report'); 
         },
-        // ADDED/CONFIRMED: The navigation method for My Reports
         goToMyReports() {
-            // Navigates to the UserReportHistory.vue component using its route name
+            // Navigates to the UserReportHistory.vue component
             this.$router.push({ name: 'UserReportHistory' });
+        },
+        handleLogout() {
+            // --- ACTUAL LOGOUT LOGIC GOES HERE ---
+            // In a real application, this would involve:
+            // 1. Calling an API to invalidate the session/token.
+            // 2. Clearing local state (e.g., Vuex/Pinia store).
+            // 3. Redirecting the user to the login page.
+            
+            alert("Logging out...");
+            // Simulate redirect to login page (assuming '/login' is the route name/path)
+            this.$router.push('/login'); 
         }
     }
 };
@@ -80,6 +93,7 @@ export default {
     display: flex;
     flex-direction: column;
     background: #EAF9E7; 
+    font-family: Arial, sans-serif;
 }
 
 .home-container {
@@ -100,7 +114,7 @@ export default {
     justify-content: space-between;
     align-items: center;
     padding: 15px 40px;
-    background-color: #549A6C; 
+    background-color: #549A6C; /* Header/Primary Green */
     color: white;
     font-weight: bold;
 }
@@ -129,6 +143,31 @@ export default {
     align-items: center;
 }
 
+/* --- User Controls (Logout and Profile) --- */
+.user-controls {
+    display: flex;
+    align-items: center;
+    gap: 15px; 
+}
+
+.logout-btn {
+    background: none;
+    border: 1px solid white;
+    color: white;
+    padding: 8px 15px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    font-weight: bold;
+    letter-spacing: 0.5px;
+    transition: background-color 0.2s, color 0.2s;
+}
+
+.logout-btn:hover {
+    background-color: white;
+    color: #549A6C; 
+}
+
 .profile-icon {
     background-color: white; 
     border-radius: 50px;
@@ -142,7 +181,7 @@ export default {
 
 /* --- Main Title --- */
 .main-title {
-    color: #1D7A31; 
+    color: #1D7A31; /* Darker Green text */
     margin: 150px 0 50px; 
     font-size: 2.5rem;
     letter-spacing: 2px;
@@ -174,7 +213,7 @@ export default {
 /* Primary (Report Incident) styling */
 .primary-btn {
     border: none;
-    background-color: #323A36; 
+    background-color: #323A36; /* Dark Grey/Black */
     color: white;
 }
 
@@ -191,7 +230,7 @@ export default {
 }
 
 .secondary-btn:hover {
-    background-color: #d8e2d8; 
+    background-color: #d8e2d8; /* Slight hover effect on background */
     color: #1a1e1b;
 }
 

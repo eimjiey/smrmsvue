@@ -20,10 +20,7 @@
     <div :style="loginSectionStyle">
       <div :style="loginBoxStyle">
         <h2 :style="loginHeaderStyle">LOG IN</h2>
-        
-        <div v-if="loginSuccessMessage" :style="successStyle">{{ loginSuccessMessage }}</div>
         <div v-if="errorMessage" :style="errorStyle">{{ errorMessage }}</div>
-        
         <form @submit.prevent="login">
           <div :style="formGroupStyle">
             <input 
@@ -44,11 +41,10 @@
               required
               :disabled="isLoading"
             />
-            
           </div>
           <div :style="forgotStyle" @click="goToForgot">Forgot Password</div>
           <button :style="loginButtonStyle" type="submit" :disabled="isLoading">
-            {{ isLoading && !loginSuccessMessage ? 'Logging in...' : 'Login' }}
+            {{ isLoading ? 'Logging in...' : 'Login' }}
           </button>
         </form>
       </div>
@@ -74,14 +70,12 @@ export default {
       logoSrc: logo,
       backgroundSrc: background,
       errorMessage: '',
-      loginSuccessMessage: '', // Added for success notification
       isLoading: false
     };
   },
   methods: {
     async login() {
       this.errorMessage = '';
-      this.loginSuccessMessage = ''; // Clear previous success/error messages
       this.isLoading = true;
 
       try {
@@ -91,7 +85,7 @@ export default {
           return;
         }
 
-        // Use the imported 'api' instance for the POST request
+        // CORRECTED: Use the imported 'api' instance for the POST request
         const response = await api.post('/login', {
           email: this.user.email,
           password: this.user.password
@@ -102,22 +96,14 @@ export default {
           
           localStorage.setItem('token', response.data.token);
           localStorage.setItem('user', JSON.stringify(user));
+          
+          const userRole = user.role ? user.role.toLowerCase() : 'default';
 
-          // Set success message and keep loading indicator active during delay
-          this.loginSuccessMessage = 'Login successful!';
-
-          // Delay redirection to show success message
-          setTimeout(() => {
-            const userRole = user.role ? user.role.toLowerCase() : 'default';
-
-            if (userRole === 'admin') {
-              this.$router.push({ name: 'AdminDashboard' });
-            } else {
-              this.$router.push({ name: 'UserDashboard' });
-            }
-            this.isLoading = false; // Reset after navigation
-          }, 1000); // 1-second delay
-        
+          if (userRole === 'admin') {
+            this.$router.push({ name: 'AdminDashboard' });
+          } else {
+            this.$router.push({ name: 'UserDashboard' });
+          }
         } else {
           this.errorMessage = 'Login failed: No token or user data received';
         }
@@ -133,10 +119,7 @@ export default {
           this.errorMessage = 'Login failed. Please check network connection.';
         }
       } finally {
-        // Only stop loading immediately if an error occurred (i.e., no success message set)
-        if (!this.loginSuccessMessage) {
-          this.isLoading = false;
-        }
+        this.isLoading = false;
       }
     },
     goToRegister() {
@@ -339,17 +322,6 @@ export default {
         opacity: this.isLoading ? 0.7 : 1,
         transition: 'opacity 0.2s',
         boxShadow: '0 4px 6px rgba(0, 0, 0, 0.2)'
-      };
-    },
-    successStyle() {
-      return {
-        color: '#1d3e21',
-        fontSize: '0.9rem',
-        marginBottom: '16px',
-        padding: '8px 10px',
-        background: '#e8f5e9',
-        borderRadius: '4px',
-        border: '1px solid #4caf50'
       };
     },
     errorStyle() {
