@@ -1,21 +1,8 @@
 <template>
+  
   <div :style="adminDashboardStyle">
     
-    <div :style="navContainerStyle">
-      <div :style="navLeftStyle">
-        <button :style="navButtonStyle" @click="$router.push({ name: 'AdminDashboard' })">
-          <span :style="iconStyle">📊</span> DASHBOARD
-        </button>
-        <div :style="navLinksStyle">
-          <span @click="$router.push({ name: 'AdminStudents' })" :style="navLinkStyle">STUDENTS LIST</span>
-          <span @click="$router.push({ name: 'AdminIncidents' })" :style="navLinkStyle">INCIDENT REPORT</span>
-          <span @click="$router.push({ name: 'AddStudent' })" :style="navLinkStyle">ADD STUDENT</span>
-        </div>
-      </div>
-      <div :style="userProfileStyle">
-        <span :style="profileIconStyle">👤</span>
-      </div>
-    </div>
+    <AdminNavbar /> 
     
     <h1 :style="mainTitleStyle">STUDENT MISCONDUCT REPORT MANAGEMENT</h1>
 
@@ -55,7 +42,7 @@
     </section>
     
     <footer :style="footerStyle">
-        <button :style="logoutButtonStyle" @click="logout">Logout</button>
+      <button :style="logoutButtonStyle" @click="logout">Logout</button>
     </footer>
     
   </div>
@@ -63,9 +50,14 @@
 
 <script>
 import api from '@/services/api'; 
+// CORRECTED IMPORT PATH: Use '../../' to go up to src/ and then down to navbar/
+import AdminNavbar from '@/pages/navbar/AdminNavbar.vue';
 
 export default {
     name: 'AdminDashboard',
+    components: {
+      AdminNavbar
+    },
     data() {
         return {
             userName: this.getUserName(),
@@ -158,86 +150,12 @@ export default {
         this.fetchAdminStats();
     },
     computed: {
-        // FIX: Wrapped all static style objects in getter functions
-        
         adminDashboardStyle() {
             return {
                 padding: '0', 
                 fontFamily: 'Arial, sans-serif',
                 minHeight: '100vh',
                 backgroundColor: '#e6f0e7',
-            };
-        },
-        navContainerStyle() {
-            return {
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                padding: '10px 20px',
-                background: '#1d3e21',
-                color: '#fff',
-                fontWeight: 'bold',
-                boxShadow: '0 4px 6px rgba(0, 0, 0, 0.2)',
-            };
-        },
-        navLeftStyle() {
-            return {
-                display: 'flex',
-                alignItems: 'center',
-                gap: '20px',
-            };
-        },
-        navButtonStyle() {
-            return {
-                display: 'flex',
-                alignItems: 'center',
-                padding: '8px 15px',
-                background: '#4CAF50',
-                color: '#fff',
-                border: 'none',
-                borderRadius: '5px',
-                cursor: 'pointer',
-                fontSize: '0.9rem',
-                fontWeight: 'bold',
-                boxShadow: '0 2px 4px rgba(0, 0, 0, 0.2)',
-            };
-        },
-        iconStyle() {
-            return {
-                marginRight: '8px',
-            };
-        },
-        navLinksStyle() {
-            return {
-                display: 'flex',
-                gap: '20px',
-                fontSize: '0.9rem',
-                textTransform: 'uppercase',
-                color: '#ddd',
-            };
-        },
-        navLinkStyle() {
-            return {
-                cursor: 'pointer',
-                transition: 'color 0.2s',
-            };
-        },
-        userProfileStyle() {
-            return {
-                padding: '8px 10px',
-                background: '#f8fff8',
-                borderRadius: '50%',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                width: '35px',
-                height: '35px',
-                color: '#1d3e21',
-            };
-        },
-        profileIconStyle() {
-            return {
-                fontSize: '1.2rem',
             };
         },
         mainTitleStyle() {

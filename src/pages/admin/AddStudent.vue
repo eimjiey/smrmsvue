@@ -1,23 +1,9 @@
 <template>
   <div :style="adminDashboardContainerStyle">
 
-    <div :style="navContainerStyle">
-      <div :style="navLeftStyle">
-        <button :style="navButtonStyle" @click="$router.push({ name: 'AdminDashboard' })">
-          <span :style="iconStyle">📊</span> DASHBOARD
-        </button>
-        <div :style="navLinksStyle">
-          <span @click="$router.push({ name: 'AdminStudents' })" :style="navLinkStyle">STUDENTS LIST</span>
-          <span @click="$router.push({ name: 'AdminIncidents' })" :style="navLinkStyle">INCIDENT REPORT</span>
-          <button :style="activeNavButtonStyle" @click="$router.push({ name: 'AddStudent' })">ADD STUDENT</button>
-        </div>
-      </div>
-      <div :style="userProfileStyle">
-        <span :style="profileIconStyle">👤</span>
-      </div>
-    </div>
+    <AdminNavbar />
 
-    <h1 :style="mainTitleStyle">STUDENT MISCONDUCT REPORT MANAGEMENT</h1>
+    <h1 :style="mainTitleStyle">ADD NEW STUDENT</h1>
 
     <div :style="formWrapperStyle">
       <p v-if="successMessage" :style="successMessageStyle">{{ successMessage }}</p>
@@ -77,10 +63,7 @@
           </div>
           <div :style="formGroupStyle('quarter')">
             <label for="program" :style="labelStyle">Program</label>
-            <div :style="selectWrapperStyle">
-              <input type="text" id="program" v-model="student.program" :style="inputStyle()" required>
-              <span :style="selectIconStyle">v</span>
-            </div>
+            <input type="text" id="program" v-model="student.program" :style="inputStyle()" required>
             <span :style="errorTextStyle" v-if="validationErrors.program">{{ validationErrors.program[0] }}</span>
           </div>
           <div :style="formGroupStyle('quarter')">
@@ -141,6 +124,8 @@
 <script>
 import { ref } from 'vue';
 import api from '@/services/api'; 
+// CORRECTED PATH: Use '../../' to navigate up from src/pages/admin/ to src/ and then down to navbar/
+import AdminNavbar from '@/pages/navbar/AdminNavbar.vue';
 
 const initialStudentState = {
   student_number: '',
@@ -160,6 +145,10 @@ const initialStudentState = {
 };
 
 export default {
+    name: 'AddStudent',
+    components: {
+        AdminNavbar
+    },
     setup() {
       const student = ref({ ...initialStudentState });
       const validationErrors = ref({});
@@ -220,7 +209,6 @@ export default {
     methods: {
       formGroupStyle(type) {
           let width = '100%';
-          // Standard vertical spacing for all fields in a row
           const marginBottom = '20px'; 
 
           if (type === 'half') width = 'calc(50% - 7.5px)';
@@ -234,10 +222,8 @@ export default {
       },
       inputStyle() {
             return {
-              // Uniform padding and height
               padding: '10px 12px',
               height: '42px',
-              // ---
               border: 'none',
               borderRadius: '5px',
               background: '#e6f0e7',
@@ -250,10 +236,8 @@ export default {
       },
       selectStyle() {
             return {
-              // Uniform padding and height
               padding: '10px 12px',
               height: '42px',
-              // ---
               border: 'none',
               borderRadius: '5px',
               background: '#e6f0e7',
@@ -274,97 +258,6 @@ export default {
               fontFamily: 'Arial, sans-serif',
               minHeight: '100vh',
               backgroundColor: '#e6f0e7',
-          };
-      },
-      // --- Navigation Styles (Replicating Dashboard Header) ---
-      navContainerStyle() {
-          return {
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              padding: '10px 20px',
-              background: '#1d3e21',
-              color: '#fff',
-              fontWeight: 'bold',
-              boxShadow: '0 4px 6px rgba(0, 0, 0, 0.2)',
-          };
-      },
-      navLeftStyle() {
-          return {
-              display: 'flex',
-              alignItems: 'center',
-              gap: '20px',
-          };
-      },
-      navButtonStyle() {
-          return {
-              display: 'flex',
-              alignItems: 'center',
-              padding: '8px 15px',
-              background: '#4CAF50',
-              color: '#fff',
-              border: 'none',
-              borderRadius: '5px',
-              cursor: 'pointer',
-              fontSize: '0.9rem',
-              fontWeight: 'bold',
-              boxShadow: '0 2px 4px rgba(0, 0, 0, 0.2)',
-          };
-      },
-      activeNavButtonStyle() {
-            return {
-              display: 'flex',
-              alignItems: 'center',
-              padding: '8px 15px',
-              background: '#f8fff8',
-              color: '#1d3e21',
-              border: 'none',
-              borderRadius: '5px',
-              cursor: 'pointer',
-              fontSize: '0.9rem',
-              fontWeight: 'bold',
-              boxShadow: '0 2px 4px rgba(0, 0, 0, 0.2)',
-              textTransform: 'uppercase',
-            };
-      },
-      iconStyle() {
-          return {
-              marginRight: '8px',
-          };
-      },
-      navLinksStyle() {
-          return {
-              display: 'flex',
-              gap: '20px',
-              fontSize: '0.9rem',
-              textTransform: 'uppercase',
-              color: '#ddd',
-          };
-      },
-      navLinkStyle() {
-          return {
-              cursor: 'pointer',
-              transition: 'color 0.2s',
-              padding: '8px 0',
-              color: '#fff',
-          };
-      },
-      userProfileStyle() {
-          return {
-              padding: '8px 10px',
-              background: '#f8fff8', 
-              borderRadius: '50%',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              width: '35px',
-              height: '35px',
-              color: '#1d3e21', 
-          };
-      },
-      profileIconStyle() {
-          return {
-              fontSize: '1.2rem',
           };
       },
       // --- Main Title ---

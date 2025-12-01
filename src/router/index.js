@@ -14,6 +14,7 @@ import EditIncident from '@/pages/admin/EditIncident.vue'
 import UserReportHistory from '@/pages/user/UserReportHistory.vue'
 import UserStudents from '@/pages/user/UserStudents.vue'
 import ReportDetails from '@/pages/user/ReportDetails.vue' 
+import CertificateGenerator from '@/pages/admin/CertificateGenerator.vue';
 
 const routes = [
     // Default Redirect: '/' redirects to '/login'
@@ -87,6 +88,19 @@ const routes = [
         props: true,
         meta: { requiresAuth: true, isAdmin: true }
     },
+
+        {
+    path: '/admin/certificate-generator',
+    name: 'AdminCertificateGenerator',
+    component: () => import('@/pages/admin/CertificateGenerator.vue'),
+    meta: { requiresAuth: true }
+    },
+
+    {
+    path: '/certificates',
+    name: 'CertificateGenerator',
+    component: CertificateGenerator
+  },
 ]
 
 const router = createRouter({
