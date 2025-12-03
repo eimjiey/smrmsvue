@@ -1,145 +1,146 @@
 <template>
-  <nav :style="navContainerStyle">
-    <div :style="navLeftStyle">
-      <div :style="logoStyle">SMRMS</div> 
-      
-      <button 
-        :style="getNavButtonStyle($route.name === 'AdminDashboard')" 
-        @click="$router.push({ name: 'AdminDashboard' })"
-      >
-        <span :style="iconStyle">📊</span> DASHBOARD
-      </button>
+  <nav class="admin-nav">
+    <!-- Left: logo -->
+    <div class="admin-nav__logo">
+      <img
+        src="@/assets/SMRMSgreen.png"
+        alt="SMRMS Logo"
+        class="admin-nav__logo-image"
+      />
+      <span class="admin-nav__logo-text"> |STUDENT MISCONDUCT REPORT MANAGEMENT SYSTEM</span>
+    </div>
 
-      <div :style="navLinksStyle">
-        <span 
-          @click="$router.push({ name: 'AdminStudents' })" 
-          :style="getNavLinkStyle($route.name === 'AdminStudents')"
+    <!-- Center/right: dark bar + separate profile pill -->
+    <div class="admin-nav__right">
+      <div class="admin-nav__links">
+        <button
+          class="admin-nav__link"
+          :class="{ 'admin-nav__link--active': $route.name === 'AdminDashboard' }"
+          @click="$router.push({ name: 'AdminDashboard' })"
         >
-          STUDENTS LIST
-        </span>
-        <span 
-          @click="$router.push({ name: 'AdminIncidents' })" 
-          :style="getNavLinkStyle($route.name === 'AdminIncidents')"
+          DASHBOARD
+        </button>
+
+        <button
+          class="admin-nav__link"
+          :class="{ 'admin-nav__link--active': $route.name === 'AdminIncidents' }"
+          @click="$router.push({ name: 'AdminIncidents' })"
         >
           INCIDENT REPORT
-        </span>
-        <span 
-          @click="$router.push({ name: 'AddStudent' })" 
-          :style="getNavLinkStyle($route.name === 'AddStudent')"
+        </button>
+
+        <button
+          class="admin-nav__link"
+          :class="{ 'admin-nav__link--active': $route.name === 'AdminStudents' }"
+          @click="$router.push({ name: 'AdminStudents' })"
+        >
+          STUDENTS LIST
+        </button>
+
+        <button
+          class="admin-nav__link"
+          :class="{ 'admin-nav__link--active': $route.name === 'AddStudent' }"
+          @click="$router.push({ name: 'AddStudent' })"
         >
           ADD STUDENT
-        </span>
+        </button>
       </div>
-    </div>
-    
-    <div :style="userProfileStyle">
-      <span :style="profileIconStyle">👤</span>
+
+      <!-- separate profile pill -->
+      <button
+        class="admin-nav__profile"
+        :class="{ 'admin-nav__profile--active': $route.name === 'AdminProfile' }"
+        @click="$router.push({ name: 'AdminProfile' })"
+      >
+        PROFILE
+      </button>
     </div>
   </nav>
 </template>
 
 <script>
 export default {
-  name: 'AdminNavbar',
-  methods: {
-    // Helper to dynamically set style based on the current route
-    getNavButtonStyle(isActive) {
-        // Base style from your original navButtonStyle
-        const baseStyle = {
-            display: 'flex',
-            alignItems: 'center',
-            padding: '8px 15px',
-            background: isActive ? '#4CAF50' : '#1d3e21', // Darker background when not active
-            color: '#fff',
-            border: 'none',
-            borderRadius: '5px',
-            cursor: 'pointer',
-            fontSize: '0.9rem',
-            fontWeight: 'bold',
-            boxShadow: '0 2px 4px rgba(0, 0, 0, 0.2)',
-            transition: 'background 0.3s'
-        };
-        // Use a slightly different background for the active dashboard button
-        return isActive ? {...baseStyle, background: '#4CAF50', boxShadow: '0 0 8px rgba(76, 175, 80, 0.5)'} : baseStyle;
-    },
-    // Helper to dynamically set style for the links
-    getNavLinkStyle(isActive) {
-        // Base style from your original navLinkStyle
-        const baseStyle = {
-            cursor: 'pointer',
-            transition: 'color 0.2s, border-bottom 0.2s',
-            paddingBottom: '2px',
-            borderBottom: '2px solid transparent',
-            color: '#ddd',
-        };
-        // Highlight active link
-        return isActive ? {...baseStyle, color: '#fff', borderBottomColor: '#4CAF50'} : baseStyle;
-    }
-  },
-  computed: {
-    navContainerStyle() {
-        return {
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            padding: '10px 20px',
-            background: '#1d3e21',
-            color: '#fff',
-            fontWeight: 'bold',
-            boxShadow: '0 4px 6px rgba(0, 0, 0, 0.2)',
-        };
-    },
-    logoStyle() {
-        return {
-            fontSize: '1.2rem',
-            fontWeight: '900',
-            marginRight: '15px',
-            color: '#95d2b7', // Light green logo color
-        }
-    },
-    navLeftStyle() {
-        return {
-            display: 'flex',
-            alignItems: 'center',
-            gap: '20px',
-        };
-    },
-    iconStyle() {
-        return {
-            marginRight: '8px',
-        };
-    },
-    navLinksStyle() {
-        return {
-            display: 'flex',
-            gap: '20px',
-            fontSize: '0.9rem',
-            textTransform: 'uppercase',
-            color: '#ddd',
-        };
-    },
-    userProfileStyle() {
-        return {
-            padding: '8px 10px',
-            background: '#f8fff8',
-            borderRadius: '50%',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            width: '35px',
-            height: '35px',
-            color: '#1d3e21',
-        };
-    },
-    profileIconStyle() {
-        return {
-            fontSize: '1.2rem',
-        };
-    },
-  }
+  name: 'AdminNavbar'
 }
 </script>
 
 <style scoped>
-/* Scoped CSS is empty as all styling is handled via computed properties */
+/* full-width background strip */
+.admin-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 32px;
+  background-color: #d4efe0; /* light green background similar to your Figma */
+}
+
+/* logo area */
+.admin-nav__logo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.admin-nav__logo-image {
+  height: 32px;
+}
+
+.admin-nav__logo-text {
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: #0b3a23;
+}
+
+/* container for dark bar + profile pill */
+.admin-nav__right {
+  display: flex;
+  align-items: center;
+  gap: 12px; /* space between bar and profile pill */
+}
+
+/* dark rounded bar with main links */
+.admin-nav__links {
+  display: flex;
+  align-items: center;
+  background-color: #0b3a23;
+  border-radius: 40px;
+  padding: 0 24px;
+  height: 44px;
+  gap: 24px;
+}
+
+/* basic links */
+.admin-nav__link {
+  border: none;
+  background: transparent;
+  color: #ffffff;
+  cursor: pointer;
+  font-size: 13px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 8px 4px;
+}
+
+/* profile pill, visually separate */
+.admin-nav__profile {
+  border: none;
+  cursor: pointer;
+  font-size: 13px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 8px 24px;
+  border-radius: 40px;
+  background-color: #7fe5a4; /* mint/bright green */
+  color: #0b3a23;
+  box-shadow: 0 0 0 2px #0b3a23; /* optional thin dark outline to match design */
+}
+
+/* active states */
+.admin-nav__link--active {
+  text-decoration: underline;
+}
+
+.admin-nav__profile--active {
+  box-shadow: 0 0 0 2px #ffffff;
+}
 </style>

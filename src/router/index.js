@@ -101,6 +101,13 @@ const routes = [
     name: 'CertificateGenerator',
     component: CertificateGenerator
   },
+
+    {
+    path: '/admin/profile',
+    name: 'AdminProfile',
+    component: () => import('@/pages/admin/AdminProfile.vue')
+    }
+
 ]
 
 const router = createRouter({
