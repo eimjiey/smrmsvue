@@ -1,11 +1,7 @@
 <template>
-  <div :style="adminDashboardContainerStyle">
-    <AdminNavbar />
-
-    <h1 :style="mainTitleStyle">STUDENT MISCONDUCT REPORT MANAGEMENT</h1>
-
+  <AdminNavbar>
+    
     <div :style="formWrapperOuterStyle">
-      <!-- white/green form card with gradient background (only for form) -->
       <div :style="formWrapperInnerStyle">
         <div :style="sectionHeaderStyle">PERSONAL INFORMATION</div>
 
@@ -27,7 +23,6 @@
             </span>
           </div>
 
-          <!-- GENDER AS BUTTONS + NAME FIELDS -->
           <div :style="formRowStyle">
             <div :style="formGroupStyle('quarter')">
               <label :style="labelStyle">Gender</label>
@@ -96,7 +91,6 @@
             </div>
           </div>
 
-          <!-- YEAR / PROGRAM / SECTION / DOB -->
           <div :style="formRowStyle">
             <div :style="formGroupStyle('quarter')">
               <label for="year_level" :style="labelStyle">Year Level</label>
@@ -158,7 +152,6 @@
             </div>
           </div>
 
-          <!-- CONTACT / EMAIL -->
           <div :style="formRowStyle">
             <div :style="formGroupStyle('half')">
               <label for="contact_number" :style="labelStyle">Contact Number</label>
@@ -189,7 +182,6 @@
             </div>
           </div>
 
-          <!-- ADDRESS -->
           <div :style="formGroupStyle('full')">
             <label for="address" :style="labelStyle">Address</label>
             <input
@@ -203,7 +195,6 @@
             </span>
           </div>
 
-          <!-- GUARDIAN / BUTTON -->
           <div :style="formRowStyle">
             <div :style="formGroupStyle('third')">
               <label for="guardian_name" :style="labelStyle">Guardian Name</label>
@@ -246,7 +237,8 @@
         </form>
       </div>
     </div>
-  </div>
+
+  </AdminNavbar>
 </template>
 
 <script>
@@ -390,28 +382,13 @@ export default {
     },
   },
   computed: {
-    adminDashboardContainerStyle() {
-      return {
-        minHeight: '100vh',
-        fontFamily: 'Arial, sans-serif',
-        backgroundColor: '#e6f0e7',
-        padding: '0',
-      };
-    },
-    mainTitleStyle() {
-      return {
-        textAlign: 'center',
-        fontSize: '1.6rem', // smaller title
-        fontWeight: 'bold',
-        color: '#198040',
-        margin: '20px 0 8px 0',
-        letterSpacing: '1px',
-      };
-    },
+    // REMOVED: adminDashboardContainerStyle (Handled by AdminNavbar root layout)
+    // REMOVED: mainTitleStyle (Handled by AdminNavbar top bar)
+
     formWrapperOuterStyle() {
       return {
         maxWidth: '850px', // narrower card
-        margin: '20px auto 40px auto',
+        margin: '20px auto 40px auto', // Centered in the AdminNavbar content area
         padding: '0 10px',
       };
     },
@@ -531,5 +508,17 @@ export default {
 input:focus,
 select:focus {
   box-shadow: 0 0 0 2px #0e7bff;
+}
+/* Custom select arrow styling for non-appearance: none */
+select {
+    /* To ensure the default appearance is suppressed for styling compatibility */
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="none" stroke="%231d3e21"><path d="M7 7l3 3 3-3m0 6l-3-3-3 3" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>');
+    background-repeat: no-repeat;
+    background-position: right 14px center; /* Positioned inside the input padding */
+    background-size: 1.2em;
+    padding-right: 30px !important; /* Ensure space for the arrow */
 }
 </style>

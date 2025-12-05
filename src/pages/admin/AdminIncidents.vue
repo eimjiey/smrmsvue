@@ -17,6 +17,10 @@ const searchTerm = ref('');
 const sortBy = ref('date_of_incident');
 const sortDirection = ref('desc');
 
+// --- Pagination State ---
+const currentPage = ref(1);
+const itemsPerPage = ref(10); // Display 10 items per page
+
 // --- API Fetching Logic ---
 const fetchIncidents = async () => {
   isLoading.value = true;
@@ -28,6 +32,7 @@ const fetchIncidents = async () => {
       receivedData = receivedData.data;
     }
     incidents.value = Array.isArray(receivedData) ? receivedData : [];
+    currentPage.value = 1; // Reset to page 1 on new fetch
   } catch (err) {
     let errorMessage =
       'Could not load incident reports. Check server connectivity or authentication.';
@@ -72,6 +77,8 @@ const handleEdit = (incident) => {
   router.push({ name: 'EditIncident', params: { id: incident.id } });
 };
 
+// --- Computed Properties for Filtering, Sorting, and Pagination ---
+
 const filteredIncidents = computed(() => {
   const incidentList = incidents.value || [];
   if (!searchTerm.value) return incidentList;
@@ -85,6 +92,7 @@ const filteredIncidents = computed(() => {
       (incident.status && incident.status.toLowerCase().includes(lowerCaseSearch))
   );
 });
+
 const sortedIncidents = computed(() => {
   const list = Array.isArray(filteredIncidents.value) ? [...filteredIncidents.value] : [];
   if (!sortBy.value || list.length === 0) return list;
@@ -97,6 +105,36 @@ const sortedIncidents = computed(() => {
   });
   return list;
 });
+
+const paginatedIncidents = computed(() => {
+  const start = (currentPage.value - 1) * itemsPerPage.value;
+  const end = start + itemsPerPage.value;
+  return sortedIncidents.value.slice(start, end);
+});
+
+const totalPages = computed(() => {
+  return Math.ceil(sortedIncidents.value.length / itemsPerPage.value);
+});
+
+// --- Pagination Methods ---
+
+const goToPage = (page) => {
+  if (page >= 1 && page <= totalPages.value) {
+    currentPage.value = page;
+  }
+};
+
+const nextPage = () => {
+  goToPage(currentPage.value + 1);
+};
+
+const prevPage = () => {
+  goToPage(currentPage.value - 1);
+};
+
+
+// --- Utility Functions ---
+
 const toggleSort = (column) => {
   if (sortBy.value === column) {
     sortDirection.value = sortDirection.value === 'asc' ? 'desc' : 'asc';
@@ -104,11 +142,14 @@ const toggleSort = (column) => {
     sortBy.value = column;
     sortDirection.value = 'desc';
   }
+  currentPage.value = 1; // Reset to first page after sorting
 };
+
 const getSortIcon = (column) => {
   if (sortBy.value !== column) return '—';
   return sortDirection.value === 'asc' ? '▲' : '▼';
 };
+
 const getStatusClasses = (status) => {
   switch (status) {
     case 'Resolved':
@@ -122,6 +163,7 @@ const getStatusClasses = (status) => {
       return { backgroundColor: '#f8d7da', color: '#721c24', borderColor: '#f5c6cb' };
   }
 };
+
 const formatDate = (dateString, timeString) => {
   try {
     const date = new Date(`${dateString}T${timeString}`);
@@ -134,27 +176,15 @@ const formatDate = (dateString, timeString) => {
     return 'N/A';
   }
 };
+
 onMounted(fetchIncidents);
 
-// --- Layout Styles ---
-const adminDashboardContainerStyle = {
-  minHeight: '100vh',
-  fontFamily: 'Arial, sans-serif',
-  backgroundColor: '#e6f0e7',
-  padding: '0',
-};
-const mainTitleStyle = {
-  textAlign: 'center',
-  fontSize: '2rem',
-  fontWeight: 'bold',
-  color: '#198040',
-  margin: '25px 0 10px 0',
-  letterSpacing: '1px',
-};
+// --- Layout Styles (Preserved all design styles) ---
+
 const formWrapperOuterStyle = {
-  maxWidth: '1100px',
-  margin: '20px auto 40px auto',
-  padding: '0 20px',
+  maxWidth: '100%', 
+  margin: '0 auto', 
+  padding: '0 0',
 };
 const formWrapperInnerStyle = {
   padding: '30px',
@@ -307,6 +337,7 @@ const tableStyle = {
   width: '100%',
   borderCollapse: 'separate',
   borderSpacing: 0,
+  minWidth: '800px', // Ensure minimum width so 'ACTIONS' column is not squeezed
 };
 const tableHeaderStyle = {
   background: '#064b2a',
@@ -372,12 +403,38 @@ const actionButtonStyle = (type) => {
     fontWeight: '600',
   };
 };
+const paginationContainerStyle = {
+  display: 'flex',
+  justifyContent: 'flex-end',
+  alignItems: 'center',
+  marginTop: '15px',
+  padding: '8px 15px',
+  backgroundColor: 'rgba(255,255,255,0.7)',
+  borderRadius: '10px',
+  boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+};
+const paginationButtonStyle = (isDisabled) => ({
+  padding: '6px 12px',
+  margin: '0 4px',
+  border: 'none',
+  borderRadius: '5px',
+  cursor: isDisabled ? 'not-allowed' : 'pointer',
+  backgroundColor: isDisabled ? '#e0e0e0' : '#1d3e21',
+  color: isDisabled ? '#a0a0a0' : '#ffffff',
+  fontWeight: '600',
+  transition: 'background-color 0.2s',
+});
+const paginationInfoStyle = {
+  margin: '0 15px',
+  fontSize: '0.9rem',
+  color: '#1d3e21',
+  fontWeight: '600',
+};
 </script>
 
 <template>
-  <div :style="adminDashboardContainerStyle">
-    <AdminNavbar />
-    <h1 :style="mainTitleStyle">STUDENT MISCONDUCT REPORT MANAGEMENT</h1>
+  <AdminNavbar>
+    
     <div :style="formWrapperOuterStyle">
       <div :style="formWrapperInnerStyle">
         <div :style="sectionHeaderStyle">INCIDENT REPORTS</div>
@@ -387,36 +444,35 @@ const actionButtonStyle = (type) => {
           <div :style="controlBarStyle">
             <div :style="searchWrapperStyle">
               <input type="text" v-model="searchTerm" placeholder="Search by ID, Name, or Offense..." :style="searchInputStyle"/>
+              
               <svg :style="searchIconStyle" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                ircle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
-                <path class="opacity-75" fill="currentColor"
-                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 
-                  7.938l3-2.647z"/>
+                <path d="M10 18a8 8 0 100-16 8 8 0 000 16zM21 21l-4.35-4.35" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/>
               </svg>
             </div>
             <div :style="totalReportsStyle">TOTAL REPORTS: {{ incidents.length }}</div>
           </div>
+          
           <div v-if="isLoading" :style="loadingStyle">
             <svg class="animate-spin" :style="spinnerStyle" viewBox="0 0 24 24" fill="none">
-              ircle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
               <path class="opacity-75" fill="currentColor"
-                    d="M4 12a8 8 0 018-8V0C5.373 0 0 
-                       5.373 0 12h4zm2 5.291A7.962 7.962 0 014 
-                       12H0c0 3.042 1.135 5.824 3 
-                       7.938l3-2.647z"/>
+                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
             </svg>
             Loading incident reports...
           </div>
+          
           <div v-else-if="error" :style="errorBoxStyle">
             <p :style="errorTitleStyle">Message:</p>
             <p>{{ error }}</p>
           </div>
+          
           <div v-else-if="incidents.length === 0" :style="noDataStyle">
             <p :style="noDataTitleStyle">No Incident Reports Found</p>
             <p :style="noDataSubTitleStyle">
               The incident database is currently empty.
             </p>
           </div>
+          
           <div v-else :style="tableOuterPanelStyle">
             <div :style="tableWrapperStyle">
               <table :style="tableStyle">
@@ -436,7 +492,7 @@ const actionButtonStyle = (type) => {
                   </tr>
                 </thead>
                 <tbody :style="tableBodyStyle">
-                  <tr v-for="incident in sortedIncidents" :key="incident.id" :style="tableRowStyle">
+                  <tr v-for="incident in paginatedIncidents" :key="incident.id" :style="tableRowStyle">
                     <td :style="tableDataCellStyle('name')">{{ incident.full_name }}</td>
                     <td :style="tableDataCellStyle('normal')">
                       <span :style="{ fontWeight: '600', color: '#fffbeb' }">{{ incident.specific_offense }}</span>
@@ -460,19 +516,37 @@ const actionButtonStyle = (type) => {
                       <button @click="handleEdit(incident)" :style="actionButtonStyle('view')">Edit</button>
                     </td>
                   </tr>
-                  <tr v-if="incidents.length > 0 && filteredIncidents.length === 0">
+                  <tr v-if="incidents.length > 0 && paginatedIncidents.length === 0">
                     <td colspan="5" :style="noSearchResultsStyle">
-                      No results found for "{{ searchTerm }}"
+                      No results found for "{{ searchTerm }}" on this page.
                     </td>
                   </tr>
                 </tbody>
               </table>
             </div>
+            
+            <div v-if="totalPages > 1" :style="paginationContainerStyle">
+                <button 
+                    @click="prevPage" 
+                    :disabled="currentPage === 1" 
+                    :style="paginationButtonStyle(currentPage === 1)">
+                    Previous
+                </button>
+                <span :style="paginationInfoStyle">
+                    Page {{ currentPage }} of {{ totalPages }}
+                </span>
+                <button 
+                    @click="nextPage" 
+                    :disabled="currentPage === totalPages" 
+                    :style="paginationButtonStyle(currentPage === totalPages)">
+                    Next
+                </button>
+            </div>
           </div>
         </div>
       </div>
     </div>
-  </div>
+  </AdminNavbar>
 </template>
 
 <style scoped>
@@ -490,11 +564,12 @@ const actionButtonStyle = (type) => {
 .animate-spin {
   animation: spin 1s linear infinite;
 }
+
 select {
   -webkit-appearance: none;
   -moz-appearance: none;
   appearance: none;
-  background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="none" stroke="%23ffffff"><path d="M7 7l3-3 3 3m0 6l-3 3-3-3" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>');
+  background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="none" stroke="%23333333"><path d="M7 7l3-3 3 3m0 6l-3 3-3-3" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>');
   background-repeat: no-repeat;
   background-position: right 0.5rem center;
   background-size: 1em;

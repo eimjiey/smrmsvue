@@ -1,7 +1,5 @@
 <template>
-  <div :style="adminDashboardContainerStyle">
-    <AdminNavbar />
-
+  <AdminNavbar>
     <h1 :style="mainTitleStyle">EDIT INCIDENT REPORT #{{ incidentId }}</h1>
 
     <div :style="formWrapperOuterStyle">
@@ -169,7 +167,7 @@
         </div>
       </div>
     </div>
-  </div>
+  </AdminNavbar>
 </template>
 
 <script setup>
@@ -279,23 +277,18 @@ onMounted(() => {
 const goBack = () => router.push({ name: 'AdminIncidents' });
 
 // STYLES (from AddStudent for consistency)
-const adminDashboardContainerStyle = {
-  minHeight: '100vh',
-  fontFamily: 'Arial, sans-serif',
-  backgroundColor: '#e6f0e7',
-  padding: '0',
-};
+// Removed conflicting adminDashboardContainerStyle
 const mainTitleStyle = {
   textAlign: 'center',
   fontSize: '1.6rem',
   fontWeight: 'bold',
   color: '#198040',
-  margin: '20px 0 8px 0',
+  margin: '20px 0 8px 0', // Centered below topbar/navbar
   letterSpacing: '1px',
 };
 const formWrapperOuterStyle = {
   maxWidth: '850px',
-  margin: '20px auto 40px auto',
+  margin: '20px auto 40px auto', // Centered horizontally in the green panel
   padding: '0 10px',
 };
 const formWrapperInnerStyle = {
@@ -419,5 +412,16 @@ const cancelButtonStyle = {
 <style scoped>
 input:focus, select:focus, textarea:focus {
   box-shadow: 0 0 0 2px #0e7bff;
+}
+/* Custom select arrow styling */
+select {
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="none" stroke="%231d3e21"><path d="M7 7l3 3 3-3m0 6l-3-3-3 3" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>');
+    background-repeat: no-repeat;
+    background-position: right 14px center;
+    background-size: 1.2em;
+    padding-right: 30px !important;
 }
 </style>

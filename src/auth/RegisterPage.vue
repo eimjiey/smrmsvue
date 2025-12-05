@@ -82,9 +82,9 @@
 <script>
 import axios from 'axios';
 import background from '@/assets/BACKGROUND.jpg'; 
-import logo from '@/assets/ISULOGO.png'; 
+import logo from '@/assets/SMRMS.png'; 
 
-axios.defaults.baseURL = process.env.VUE_APP_API_URL || 'http://192.168.8.50:8000/api';
+axios.defaults.baseURL = process.env.VUE_APP_API_URL || 'http://127.0.0.1:8000/api';
 
 export default {
   name: 'RegisterPage',

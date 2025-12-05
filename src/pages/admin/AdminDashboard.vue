@@ -1,38 +1,39 @@
 <template>
-  <div :style="adminDashboardStyle">
+  <AdminNavbar> 
     
-    <AdminNavbar /> 
-    
-    <h1 :style="mainTitleStyle">STUDENT MISCONDUCT REPORT MANAGEMENT</h1>
-
     <section :style="quickStatsGridStyle">
-      <div :style="getStatMainStyle(true)">
-        <div :style="statValueStyle">{{ stats.students }}</div>
-        <div :style="statLabelStyle">{{ getStatLabelText('TOTAL STUDENTS') }}</div>
-      </div>
       
-      <div :style="getStatMainStyle(false)">
-        <div :style="statValueStyle">{{ stats.reports }}</div>
-        <div :style="statLabelStyle">{{ getStatLabelText('TOTAL REPORTS FILED') }}</div>
+      <div style="display: flex; width: 100%; gap: 20px; margin-bottom: 20px;">
+        
+        <div :style="getStatMainStyle()">
+          <div :style="statValueStyle">{{ stats.students }}</div>
+          <div :style="statLabelStyle">{{ getStatLabelText('TOTAL STUDENTS') }}</div>
+        </div>
+        
+        <div :style="getStatMainStyle()">
+          <div :style="statValueStyle">{{ stats.reports }}</div>
+          <div :style="statLabelStyle">{{ getStatLabelText('TOTAL REPORTS FILED') }}</div>
+        </div>
       </div>
 
       <div :style="statusRowStyle">
-        <div :style="getStatStatusStyle('#95d2b7')">
+        
+        <div :style="getStatStatusStyle('#f5ffec')">
           <div :style="statValueSmStyle">{{ stats.pending }}</div>
           <div :style="statLabelSmStyle">{{ getStatLabelText('PENDING') }}</div>
         </div>
         
-        <div :style="getStatStatusStyle('#95d2b7')">
+        <div :style="getStatStatusStyle('#f5ffec')">
           <div :style="statValueSmStyle">{{ stats.underReview }}</div>
           <div :style="statLabelSmStyle">{{ getStatLabelText('UNDER REVIEW') }}</div>
         </div>
         
-        <div :style="getStatStatusStyle('#95d2b7')">
+        <div :style="getStatStatusStyle('#f5ffec')">
           <div :style="statValueSmStyle">{{ stats.resolved }}</div>
           <div :style="statLabelSmStyle">{{ getStatLabelText('RESOLVED') }}</div>
         </div>
 
-        <div :style="getStatStatusStyle('#95d2b7')">
+        <div :style="getStatStatusStyle('#f5ffec')">
           <div :style="statValueSmStyle">{{ stats.closed }}</div>
           <div :style="statLabelSmStyle">{{ getStatLabelText('CLOSED') }}</div>
         </div>
@@ -40,11 +41,7 @@
       
     </section>
     
-    <footer :style="footerStyle">
-      <button :style="logoutButtonStyle" @click="logout">Logout</button>
-    </footer>
-    
-  </div>
+  </AdminNavbar>
 </template>
 
 <script>
@@ -72,11 +69,14 @@ export default {
         }
     },
     methods: {
-        getStatMainStyle(isStudents) {
+        // FIX: Removed the unused 'isStudents' parameter to resolve the ESLint error, 
+        // while preserving the original styling for the two main stat boxes.
+        getStatMainStyle() { 
             return {
-                width: '100%',
+                // Design preserved: Dark green background, white text, large border-radius, shadow
+                width: 'calc(50% - 10px)', 
                 height: '130px',
-                background: '#1d3e21',
+                background: '#1d3e21', // Original dark green
                 color: '#f8fff8',
                 display: 'flex',
                 flexDirection: 'column',
@@ -85,14 +85,14 @@ export default {
                 borderRadius: '10px',
                 boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
                 padding: '20px',
-                ...(isStudents ? { marginRight: '10px' } : { marginLeft: '10px' }),
             };
         },
         getStatStatusStyle(color) {
             return {
+                // Design preserved: Lighter background, dark text, small border-radius, shadow
                 width: 'calc(25% - 10px)',
                 padding: '10px 5px',
-                background: color,
+                background: color, // Passed color (set to #f5ffec in template)
                 color: '#1d3e21',
                 fontWeight: 'bold',
                 borderRadius: '5px',
@@ -149,27 +149,10 @@ export default {
         this.fetchAdminStats();
     },
     computed: {
-        adminDashboardStyle() {
-            return {
-                padding: '0', 
-                fontFamily: 'Arial, sans-serif',
-                minHeight: '100vh',
-                backgroundColor: '#e6f0e7',
-            };
-        },
-        mainTitleStyle() {
-            return {
-                textAlign: 'center',
-                fontSize: '1.8rem',
-                fontWeight: 'bold',
-                color: '#1d3e21',
-                margin: '40px 0 30px 0',
-                textTransform: 'uppercase',
-            };
-        },
+        // Styles are retained to ensure your intended design is kept.
         quickStatsGridStyle() {
             return {
-                maxWidth: '900px',
+                maxWidth: '100%',
                 margin: '0 auto',
                 display: 'flex',
                 flexDirection: 'column',
@@ -177,6 +160,7 @@ export default {
             };
         },
         statValueStyle() {
+            // Design preserved: Very large font size for main stats
             return {
                 fontSize: '3.5rem',
                 fontWeight: '900',
@@ -184,6 +168,7 @@ export default {
             };
         },
         statLabelStyle() {
+            // Design preserved: Small, uppercase label
             return {
                 marginTop: '10px',
                 fontSize: '1rem',
@@ -192,16 +177,18 @@ export default {
             };
         },
         statusRowStyle() {
+            // Design preserved: Spacing and layout for the four smaller stats
             return {
                 display: 'flex',
-                justifyContent: 'space-around',
+                justifyContent: 'space-between',
                 alignItems: 'center',
-                padding: '20px 0',
+                gap: '10px', 
+                padding: '0', 
                 marginTop: '10px',
-                transform: 'translateY(-10px)',
             };
         },
         statValueSmStyle() {
+            // Design preserved: Font size for status numbers
             return {
                 fontSize: '1.2rem',
                 fontWeight: '900',
@@ -211,28 +198,12 @@ export default {
             };
         },
         statLabelSmStyle() {
+            // Design preserved: Font size for status labels
             return {
                 fontSize: '0.7rem',
                 textTransform: 'uppercase',
                 letterSpacing: '0.5px',
                 color: '#1d3e21',
-            };
-        },
-        footerStyle() {
-            return {
-                textAlign: 'center',
-                marginTop: '40px',
-            };
-        },
-        logoutButtonStyle() {
-            return {
-                padding: '10px 20px',
-                background: '#dc2626',
-                color: '#fff',
-                border: 'none',
-                borderRadius: '5px',
-                cursor: 'pointer',
-                fontWeight: 'bold',
             };
         },
     }

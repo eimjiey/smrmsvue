@@ -12,27 +12,12 @@ const isLoading = ref(false);
 const message = ref('');
 const isSuccess = ref(true);
 
-// --- Layout styles (same design family as StudentsList.vue) ---
-const adminDashboardContainerStyle = {
-  minHeight: '100vh',
-  fontFamily: 'Arial, sans-serif',
-  backgroundColor: '#e6f0e7',
-  padding: '0',
-};
-
-const mainTitleStyle = {
-  textAlign: 'center',
-  fontSize: '2rem',
-  fontWeight: 'bold',
-  color: '#198040',
-  margin: '25px 0 10px 0',
-  letterSpacing: '1px',
-};
+// --- Layout styles (retained unique form styles, removed layout conflicts) ---
 
 const formWrapperOuterStyle = {
   maxWidth: '700px',
-  margin: '20px auto 40px auto',
-  padding: '0 20px',
+  margin: '20px auto 40px auto', // Centered within the AdminNavbar content area
+  padding: '0 0',
 };
 
 const formWrapperInnerStyle = {
@@ -82,7 +67,7 @@ const setMessage = (msg, success = true) => {
 const fetchStudents = async () => {
   try {
     const res = await api.get('/students');
-    students.value = res.data.data || [];
+    students.value = res.data.data || res.data || []; 
     setMessage('Students loaded successfully.', true);
   } catch (err) {
     console.error('Error fetching students:', err);
@@ -96,10 +81,13 @@ const initiateDownload = async () => {
     return;
   }
 
+  const downloadLink = downloadUrl.value;
+  
   try {
-    const response = await fetch(downloadUrl.value, { method: 'HEAD' });
+    const response = await fetch(downloadLink, { method: 'HEAD' });
+
     if (response.ok) {
-      window.open(downloadUrl.value, '_blank');
+      window.open(downloadLink, '_blank');
       setMessage("Download initiated. Check your browser's downloads.", true);
     } else if (response.status === 404) {
       setMessage(
@@ -108,7 +96,7 @@ const initiateDownload = async () => {
       );
     } else if (response.status === 401 || response.status === 403) {
       setMessage(
-        'Download failed: Authentication error (401/403). Ensure the download route is public.',
+        'Download failed: Authentication error (401/403). Ensure the download route is properly secured/public.',
         false,
       );
     } else {
@@ -170,23 +158,17 @@ onMounted(fetchStudents);
 </script>
 
 <template>
-  <div :style="adminDashboardContainerStyle">
-    <AdminNavbar />
-
-    <h1 :style="mainTitleStyle">STUDENT MISCONDUCT REPORT MANAGEMENT</h1>
-
+  <AdminNavbar>
     <div :style="formWrapperOuterStyle">
       <div :style="formWrapperInnerStyle">
         <div :style="sectionHeaderStyle">CERTIFICATE GENERATOR</div>
 
         <div :style="contentCardStyle">
-          <!-- Your original inner card with Tailwind -->
           <div class="p-6 bg-white shadow-xl rounded-xl">
             <h1 class="text-3xl font-extrabold text-green-700 mb-6 border-b pb-2">
               Certificate Generator
             </h1>
 
-            <!-- Success/Error Message Notifier -->
             <div
               v-if="message"
               :class="{
@@ -229,7 +211,6 @@ onMounted(fetchStudents);
               <span v-else>Generate Certificate</span>
             </button>
 
-            <!-- Download Button (Visible after successful generation) -->
             <a
               v-if="certificateId"
               href="#"
@@ -242,15 +223,9 @@ onMounted(fetchStudents);
         </div>
       </div>
     </div>
-  </div>
+  </AdminNavbar>
 </template>
 
 <style scoped>
-:global(html),
-:global(body) {
-  margin: 0;
-  padding: 0;
-  width: 100%;
-  overflow-x: hidden;
-}
+/* NOTE: Removed global styles as they conflict with the layout */
 </style>

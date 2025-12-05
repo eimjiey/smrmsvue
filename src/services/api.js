@@ -6,7 +6,8 @@ import axios from 'axios';
 const api = axios.create({
     // Use env var when available (set via .env.local), otherwise fallback
     // baseURL: process.env.VUE_APP_API_URL || 'http://192.168.100.74:8000/api',
-        baseURL: process.env.VUE_APP_API_URL || 'http://192.168.1.38:8000/api',
+    // baseURL: process.env.VUE_APP_API_URL || 'http://192.168.1.38:8000/api',
+        baseURL: process.env.VUE_APP_API_URL || 'http://127.0.0.1:8000/api',
     headers: {
         'Accept': 'application/json',
         'Content-Type': 'application/json',

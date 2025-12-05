@@ -56,7 +56,7 @@
 // NOTE: axios import is removed as we are using the configured 'api' instance
 import api from '@/services/api'; //api link - THIS is the instance with the base URL configured
 import background from '@/assets/BACKGROUND.jpg'; 
-import logo from '@/assets/ISULOGO.png'; 
+import logo from '@/assets/SMRMS.png'; 
 
 
 export default {

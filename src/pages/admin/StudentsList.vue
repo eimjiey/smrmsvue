@@ -13,6 +13,10 @@ const searchTerm = ref('');
 const sortBy = ref('student_number');
 const sortDirection = ref('asc');
 
+// --- Pagination State ---
+const currentPage = ref(1);
+const itemsPerPage = ref(10); // Display 10 items per page
+
 // --- Setup ---
 const router = useRouter();
 
@@ -31,6 +35,7 @@ const fetchStudents = async () => {
       receivedData = receivedData.data;
     }
     students.value = Array.isArray(receivedData) ? receivedData : [];
+    currentPage.value = 1; // Reset to page 1 on new fetch
   } catch (err) {
     let errorMessage = 'Could not load student data.';
     if (err.response && err.response.data && err.response.data.message) {
@@ -96,6 +101,34 @@ const sortedStudents = computed(() => {
   return list;
 });
 
+const paginatedStudents = computed(() => {
+  const start = (currentPage.value - 1) * itemsPerPage.value;
+  const end = start + itemsPerPage.value;
+  return sortedStudents.value.slice(start, end);
+});
+
+const totalPages = computed(() => {
+  return Math.ceil(sortedStudents.value.length / itemsPerPage.value);
+});
+
+// --- Pagination Methods ---
+
+const goToPage = (page) => {
+  if (page >= 1 && page <= totalPages.value) {
+    currentPage.value = page;
+  }
+};
+
+const nextPage = () => {
+  goToPage(currentPage.value + 1);
+};
+
+const prevPage = () => {
+  goToPage(currentPage.value - 1);
+};
+
+// --- Utility Methods ---
+
 const toggleSort = (column) => {
   if (sortBy.value === column) {
     sortDirection.value = sortDirection.value === 'asc' ? 'desc' : 'asc';
@@ -103,6 +136,7 @@ const toggleSort = (column) => {
     sortBy.value = column;
     sortDirection.value = 'asc';
   }
+  currentPage.value = 1; // Reset to first page after sorting
 };
 
 const getSortIcon = (column) => {
@@ -113,22 +147,6 @@ const getSortIcon = (column) => {
 onMounted(fetchStudents);
 
 // --- Layout styles mirroring Incident Reports design ---
-
-const adminDashboardContainerStyle = {
-  minHeight: '100vh',
-  fontFamily: 'Arial, sans-serif',
-  backgroundColor: '#e6f0e7',
-  padding: '0',
-};
-
-const mainTitleStyle = {
-  textAlign: 'center',
-  fontSize: '2rem',
-  fontWeight: 'bold',
-  color: '#198040',
-  margin: '25px 0 10px 0',
-  letterSpacing: '1px',
-};
 
 const formWrapperOuterStyle = {
   maxWidth: '1100px',
@@ -252,7 +270,8 @@ const spinnerStyle = {
   width: '20px',
   height: '20px',
   marginRight: '8px',
-  verticalAlign: 'middle',
+  // FIX: Converted hyphenated CSS property to camelCase for JavaScript object key
+  verticalAlign: 'middle', 
 };
 
 const errorBoxStyle = computed(() => {
@@ -381,13 +400,40 @@ const noSearchResultsStyle = {
   fontStyle: 'italic',
   fontSize: '0.9rem',
 };
+
+const paginationContainerStyle = {
+  display: 'flex',
+  justifyContent: 'flex-end',
+  alignItems: 'center',
+  marginTop: '15px',
+  padding: '8px 15px',
+  backgroundColor: 'rgba(255,255,255,0.7)',
+  borderRadius: '10px',
+  boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+};
+
+const paginationButtonStyle = (isDisabled) => ({
+  padding: '6px 12px',
+  margin: '0 4px',
+  border: 'none',
+  borderRadius: '5px',
+  cursor: isDisabled ? 'not-allowed' : 'pointer',
+  backgroundColor: isDisabled ? '#e0e0e0' : '#1d3e21',
+  color: isDisabled ? '#a0a0a0' : '#ffffff',
+  fontWeight: '600',
+  transition: 'background-color 0.2s',
+});
+
+const paginationInfoStyle = {
+  margin: '0 15px',
+  fontSize: '0.9rem',
+  color: '#1d3e21',
+  fontWeight: '600',
+};
 </script>
 
 <template>
-  <div :style="adminDashboardContainerStyle">
-    <AdminNavbar />
-
-    <h1 :style="mainTitleStyle">STUDENT MISCONDUCT REPORT MANAGEMENT</h1>
+  <AdminNavbar>
 
     <div :style="formWrapperOuterStyle">
       <div :style="formWrapperInnerStyle">
@@ -431,7 +477,7 @@ const noSearchResultsStyle = {
                 :style="navButtonStyle"
                 @click="router.push({ name: 'CertificateGenerator' })"
               >
-                🎓 Generate Certificate
+                Generate Certificate
               </button>
             </div>
           </div>
@@ -444,7 +490,7 @@ const noSearchResultsStyle = {
               fill="none"
               xmlns="http://www.w3.org/2000/svg"
             >
-              ircle
+              <circle
                 class="opacity-25"
                 cx="12"
                 cy="12"
@@ -455,9 +501,7 @@ const noSearchResultsStyle = {
               <path
                 class="opacity-75"
                 fill="currentColor"
-                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2
-                   5.291A7.962 7.962 0 014 12H0c0 3.042 1.135
-                   5.824 3 7.938l3-2.647z"
+                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
               />
             </svg>
             Loading student list...
@@ -511,7 +555,7 @@ const noSearchResultsStyle = {
                 </thead>
                 <tbody :style="tableBodyStyle">
                   <tr
-                    v-for="student in sortedStudents"
+                    v-for="student in paginatedStudents"
                     :key="student.student_number"
                     :style="tableRowStyle"
                   >
@@ -530,20 +574,38 @@ const noSearchResultsStyle = {
                   </tr>
 
                   <tr
-                    v-if="students.length > 0 && filteredStudents.length === 0"
+                    v-if="students.length > 0 && paginatedStudents.length === 0"
                   >
                     <td colspan="4" :style="noSearchResultsStyle">
-                      No results found for "{{ searchTerm }}"
+                      No results found for "{{ searchTerm }}" on this page.
                     </td>
                   </tr>
                 </tbody>
               </table>
             </div>
+
+            <div v-if="totalPages > 1" :style="paginationContainerStyle">
+                <button 
+                    @click="prevPage" 
+                    :disabled="currentPage === 1" 
+                    :style="paginationButtonStyle(currentPage === 1)">
+                    Previous
+                </button>
+                <span :style="paginationInfoStyle">
+                    Page {{ currentPage }} of {{ totalPages }}
+                </span>
+                <button 
+                    @click="nextPage" 
+                    :disabled="currentPage === totalPages" 
+                    :style="paginationButtonStyle(currentPage === totalPages)">
+                    Next
+                </button>
+            </div>
           </div>
         </div>
       </div>
     </div>
-  </div>
+  </AdminNavbar>
 </template>
 
 <style scoped>
