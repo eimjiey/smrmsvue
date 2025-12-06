@@ -30,16 +30,22 @@
             </tr>
           </thead>
           <tbody>
-            <tr v-for="report in reports" :key="report.id" :style="tableRowStyle" @click="viewReportDetails(report.id)">
-              <td :style="tableCellStyle">{{ report.id }}</td> 
+            <tr v-for="report in reports" :key="report.id" :style="tableRowStyle">
+                <td :style="tableCellStyle">{{ report.id }}</td> 
               <td :style="tableCellStyle">{{ report.student_name }}</td>
               <td :style="tableCellStyle">{{ report.misconduct_type }}</td>
               <td :style="tableCellStyle">{{ formatDateTime(report.incident_date) }}</td>
               <td :style="statusStyle(report.status)">
                 {{ report.status }}
               </td>
-              <td :style="tableCellStyle">
-                <button :style="viewButtonStyle" @click.stop="viewReportDetails(report.id)">Review</button>
+              <td :style="actionCellStyle">
+                <button :style="viewButtonStyle" @click="viewReportDetails(report.id)">Review</button>
+                
+                <button 
+                    :style="deleteButtonStyle" 
+                    @click="confirmDeleteReport(report.id)">
+                    Delete
+                </button>
               </td>
             </tr>
           </tbody>
@@ -78,6 +84,8 @@ export default {
         const isLoading = ref(true);
         const errorMessage = ref(null);
         
+        // --- Core Functions ---
+
         const fetchReports = async () => {
             isLoading.value = true;
             errorMessage.value = null;
@@ -89,7 +97,8 @@ export default {
                     return;
                 }
 
-                const response = await api.get('/incidents');
+                // Assuming this endpoint only returns reports that are NOT soft-deleted
+                const response = await api.get('/incidents'); 
                 
                 if (response.status === 200) {
                     const dataArray = Array.isArray(response.data) ? response.data : [];
@@ -114,10 +123,7 @@ export default {
             }
         };
 
-        onMounted(fetchReports);
-        
         const viewReportDetails = (reportId) => {
-            // Redirect to the detailed view of the specific report
             router.push({ name: 'ReportDetails', params: { id: reportId } });
         };
         
@@ -126,7 +132,41 @@ export default {
             return new Date(dateString).toLocaleDateString('en-US');
         }
 
-        // --- STYLES (Inline Styles restored to include viewButtonStyle) ---
+        // -----------------------------------------------------------
+        // 🎯 DELETE FUNCTIONALITY
+        // -----------------------------------------------------------
+
+        const confirmDeleteReport = (reportId) => {
+            // Basic confirmation for soft-delete
+            if (window.confirm(`Are you sure you want to delete report #${reportId}? You may not be able to recover it.`)) {
+                deleteReport(reportId);
+            }
+        };
+
+        const deleteReport = async (reportId) => {
+            try {
+                // Laravel Soft Delete: Sends a DELETE request to the resource endpoint.
+                // The API should handle this by setting the 'deleted_at' timestamp.
+                const response = await api.delete(`/incidents/${reportId}`);
+
+                if (response.status === 200 || response.status === 204) {
+                    // Remove the report locally from the array without a full page reload
+                    reports.value = reports.value.filter(report => report.id !== reportId);
+                    
+                    // Optional: Show a success message (e.g., using a separate toast component)
+                    alert(`Report #${reportId} successfully deleted.`); 
+                }
+            } catch (error) {
+                console.error(`Error soft-deleting report #${reportId}:`, error);
+                errorMessage.value = `Failed to delete report #${reportId}. Ensure you have permission.`;
+            }
+        };
+
+        // -----------------------------------------------------------
+        
+        onMounted(fetchReports);
+        
+        // --- STYLES (Inline Styles) ---
         const themeColors = {
             darkGreen: '#1d3e21',
             mediumGreen: '#4CAF50',
@@ -227,7 +267,7 @@ export default {
             border: '1px solid #eee',
             borderRadius: '5px',
             transition: 'background-color 0.2s',
-            cursor: 'pointer',
+            // Removed cursor: 'pointer' to indicate the row click handler is gone
         }));
         
         const tableCellStyle = computed(() => ({
@@ -235,6 +275,14 @@ export default {
             fontSize: '0.95rem',
             color: '#333',
         }));
+
+        const actionCellStyle = computed(() => ({
+            ...tableCellStyle.value,
+            display: 'flex',
+            gap: '10px', // Space between buttons
+            alignItems: 'center',
+        }));
+
 
         const statusStyle = (status) => {
             let color = '#333';
@@ -278,6 +326,18 @@ export default {
             transition: 'background-color 0.2s',
         }));
         
+        // 🎯 NEW DELETE BUTTON STYLE
+        const deleteButtonStyle = computed(() => ({
+            padding: '5px 10px',
+            backgroundColor: '#dc3545', // Red color for delete
+            color: themeColors.white,
+            border: 'none',
+            borderRadius: '3px',
+            cursor: 'pointer',
+            fontSize: '0.8rem',
+            transition: 'background-color 0.2s',
+        }));
+
         const loadingStyle = computed(() => ({ padding: '15px', backgroundColor: '#fffbe6', border: '1px solid #ffcc00', borderRadius: '5px', color: '#a07e00', fontWeight: 'bold', }));
         const errorMessageStyle = computed(() => ({ padding: '15px', backgroundColor: '#f8d7da', border: '1px solid #f5c6cb', borderRadius: '5px', color: '#721c24', fontWeight: 'bold', }));
         const noDataStyle = computed(() => ({ padding: '15px', backgroundColor: '#e9ecef', border: '1px solid #ccc', borderRadius: '5px', color: '#6c757d', fontWeight: 'bold', }));
@@ -288,8 +348,11 @@ export default {
             isLoading,
             errorMessage,
             viewReportDetails,
+            confirmDeleteReport, // 🎯 Export new function
             formatDateTime,
             statusStyle,
+            
+            // Styles
             userPageContainerStyle,
             headerBarStyle,
             headerTitleStyle,
@@ -304,10 +367,12 @@ export default {
             tableHeaderCellStyle,
             tableRowStyle,
             tableCellStyle,
+            actionCellStyle, // 🎯 New action cell style
             loadingStyle,
             errorMessageStyle,
             noDataStyle,
             viewButtonStyle,
+            deleteButtonStyle, // 🎯 Export new style
         };
     },
 };
@@ -315,4 +380,5 @@ export default {
 
 <style scoped>
 /* Scoped styles are handled by the inline style bindings in this case. */
+/* You might want to add a hover state for rows/buttons here if possible */
 </style>

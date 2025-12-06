@@ -15,7 +15,7 @@
         </header>
 
         <div class="form-container">
-            <h1 class="main-title-text">STUDMENT MISCONDUCT REPORT MANAGEMENT</h1>
+            <h1 class="main-title-text">STUDENT MISCONDUCT REPORT MANAGEMENT</h1>
             
             <div v-if="isSubmitting" class="submission-status submission-loading">
                 Submitting report... Please wait.
@@ -29,41 +29,83 @@
 
                 <div class="input-group">
                     <label for="studentId">Student ID</label>
-                    <input type="text" id="studentId" v-model="form.studentId" required>
+                    <input 
+                        type="text" 
+                        id="studentId" 
+                        v-model="form.studentId" 
+                        :disabled="true"
+                        required
+                        class="auto-filled-field"
+                    >
+                    <p v-if="studentsLoadError" class="lookup-status lookup-error">
+                        ❌ Load Error: {{ studentsLoadError }}
+                    </p>
                     <p v-if="validationErrors.studentId" class="error-message">{{ validationErrors.studentId[0] }}</p>
                 </div>
 
                 <div class="input-group">
-                    <label for="fullName">Full Name</label>
-                    <input type="text" id="fullName" v-model="form.fullName" required>
+                    <label for="fullNameSelect">Full Name (Select Student)</label>
+                    
+                    <template v-if="isStudentsLoading">
+                        <input type="text" disabled value="Loading student roster from database..." class="loading-input"/>
+                    </template>
+                    
+                    <template v-else>
+                        <select 
+                            id="fullNameSelect" 
+                            v-model="form.studentId" 
+                            :disabled="isSubmitting"
+                            required
+                        >
+                            <option value="" disabled>Select Student Name</option>
+                            <option 
+                                v-for="student in allStudents" 
+                                :key="student.id" 
+                                :value="student.id"
+                            >
+                                {{ student.fullName }}
+                            </option>
+                        </select>
+                    </template>
+
                     <p v-if="validationErrors.fullName" class="error-message">{{ validationErrors.fullName[0] }}</p>
                 </div>
 
                 <div class="input-group">
                     <label for="program">Program</label>
-                    <select id="program" v-model="form.program" required>
-                        <option value="" disabled>Select Program</option>
-                        <option v-for="program in programOptions" :key="program" :value="program">
-                            {{ program }}
-                        </option>
-                    </select>
+                    <input 
+                        type="text" 
+                        id="program" 
+                        v-model="form.program" 
+                        disabled 
+                        required 
+                        class="auto-filled-field"
+                    >
                     <p v-if="validationErrors.program" class="error-message">{{ validationErrors.program[0] }}</p>
                 </div>
 
                 <div class="input-group">
                     <label for="yearLevel">Year Level</label>
-                    <select id="yearLevel" v-model="form.yearLevel" required>
-                        <option value="" disabled>Select Year Level</option>
-                        <option v-for="year in yearLevelOptions" :key="year" :value="year">
-                            {{ year }}
-                        </option>
-                    </select>
+                    <input 
+                        type="text" 
+                        id="yearLevel" 
+                        v-model="form.yearLevel" 
+                        disabled 
+                        required 
+                        class="auto-filled-field"
+                    >
                     <p v-if="validationErrors.yearLevel" class="error-message">{{ validationErrors.yearLevel[0] }}</p>
                 </div>
                 
                 <div class="input-group">
                     <label for="section">Section</label>
-                    <input type="text" id="section" v-model="form.section">
+                    <input 
+                        type="text" 
+                        id="section" 
+                        v-model="form.section"
+                        disabled
+                        class="auto-filled-field"
+                    >
                     <p v-if="validationErrors.section" class="error-message">{{ validationErrors.section[0] }}</p>
                 </div>
 
@@ -127,7 +169,7 @@
                     <button type="button" class="btn-cancel" @click="resetForm">
                         Cancel
                     </button>
-                    <button type="submit" class="btn-save" :disabled="isSubmitting">
+                    <button type="submit" class="btn-save" :disabled="isSubmitting || isStudentsLoading || !form.studentId">
                         {{ isSubmitting ? 'Filing...' : 'Save Incident' }}
                     </button>
                 </div>
@@ -147,45 +189,66 @@
                 <div class="notifier-actions">
                     <button @click="resetNotifier" class="btn-notifier-close">File New</button>
                     <button @click="navigateToDetails" class="btn-notifier-view">View Details</button>
-                 </div>
-            </div>
-            <div v-else>
-                {{ notifier.message }}
-            </div>
+                </div>
+             </div>
+             <div v-else>
+                 {{ notifier.message }}
+             </div>
         </div>
     </div>
 </template>
 
 <script setup>
-import { reactive, ref, computed, watch } from 'vue';
+import { reactive, ref, computed, watch, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import api from '@/services/api'; // Import your Axios instance
 
 const router = useRouter(); 
 
-// --- Offense Data ---
-const programOptions = ref(['BSIT', 'BSCS', 'BSED', 'BEED', 'BSBA', 'BSTM']);
-const yearLevelOptions = ref(['1st Year', '2nd Year', '3rd Year', '4th Year', 'Graduate']);
+// 📚 Data Store for all students (fetched from database)
+const allStudents = ref([]);
+const isStudentsLoading = ref(true); 
+const studentsLoadError = ref(null);
 
+// --- Offense Data ---
+// CORRECTED OFFENSE LIST 
 const specificOffenseOptions = {
     'Minor Offense': [
-        'Tardiness/Latecoming',
-        'Improper Uniform/Dress Code Violation',
-        'Littering in non-designated areas',
-        'Minor Disruptive Behavior in Class',
+        "Failure to wear uniform", 
+        "Pornographic materials", 
+        "Littering", 
+        "Loitering", 
+        "Eating in restricted areas", 
+        "Unauthorized use of school facilities",
+        "Lending/borrowing ID", 
+        "Driving violations",
     ],
     'Major Offense': [
-        'Cheating or Plagiarism',
-        'Vandalism or Damage to Property',
-        'Physical Assault or Fighting',
-        'Grave Misconduct or Immorality',
+        "Alcohol/drugs/weapons", 
+        "Smoking", 
+        "Disrespect", 
+        "Vandalism", 
+        "Cheating/forgery", 
+        "Barricades/obstructions", 
+        "Physical/verbal assault", 
+        "Hazing", 
+        "Harassment/sexual abuse", 
+        "Unauthorized software/gadgets", 
+        "Unrecognized fraternity/sorority", 
+        "Gambling", 
+        "Public indecency", 
+        "Offensive/subversive materials", 
+        "Grave threats", 
+        "Inciting fight/sedition", 
+        "Unauthorized activity", 
+        "Bullying",
     ],
 };
 
 // --- Form State ---
 const form = reactive({
-    studentId: '', 
-    fullName: '',
+    studentId: '', // Binds to Full Name dropdown value (the student_number)
+    fullName: '', // Display/Submission field
     program: '', 
     yearLevel: '', 
     section: '', 
@@ -200,13 +263,13 @@ const form = reactive({
 // --- API/Submission State ---
 const isSubmitting = ref(false);
 const submitError = ref(null);
-const validationErrors = ref({}); // Holds backend 422 errors
+const validationErrors = ref({}); 
 
 // --- Optimization/Notifier State ---
 const notifier = reactive({
     visible: false,
     message: '',
-    type: 'success', // 'success' or 'error'
+    type: 'success', 
 });
 const recommendationText = ref('');
 const newIncidentId = ref(null);
@@ -217,14 +280,81 @@ const filteredSpecificOffenses = computed(() => {
     return specificOffenseOptions[category] || [];
 });
 
-// --- Watcher to Reset Specific Offense ---
+
+// ------------------------------------------------------------------
+// 🎯 DATA FETCHING IMPLEMENTATION (Loads all students on page load)
+// ------------------------------------------------------------------
+
+const fetchAllStudents = async () => {
+    isStudentsLoading.value = true;
+    studentsLoadError.value = null;
+    
+    const STUDENTS_ENDPOINT = '/students/dropdown'; 
+    
+    try {
+        const response = await api.get(STUDENTS_ENDPOINT);
+        allStudents.value = response.data; 
+
+    } catch (error) {
+        studentsLoadError.value = 'Failed to load student roster. Check API configuration.';
+        console.error("Error fetching students:", error);
+        
+    } finally {
+        isStudentsLoading.value = false;
+    }
+};
+
+// Run the fetch function when the component is mounted to the DOM
+onMounted(() => {
+    fetchAllStudents();
+});
+
+
+// ------------------------------------------------------------------
+// 🎯 FULL NAME SELECTION WATCHER (Populates all derived fields)
+// ------------------------------------------------------------------
+watch(() => form.studentId, (newId) => {
+    if (newId) {
+        const selectedStudent = allStudents.value.find(s => s.id === newId);
+        
+        if (selectedStudent) {
+            // Populate fields using the fetched data. 
+            // We assume the API returns properties like 'program' and 'year_level'
+            
+            form.fullName = selectedStudent.fullName || (selectedStudent.first_name + ' ' + selectedStudent.last_name);
+            
+            // Fetching program and yearLevel:
+            form.program = selectedStudent.program || selectedStudent.program_code || ''; 
+            form.yearLevel = selectedStudent.year_level || selectedStudent.yearLevel || ''; 
+            
+            form.section = selectedStudent.section || '';
+            studentsLoadError.value = null;
+        } else {
+            // Fallback clear logic
+            form.fullName = '';
+            form.program = '';
+            form.yearLevel = '';
+            form.section = '';
+            studentsLoadError.value = 'Selected student details are missing.';
+        }
+    } else {
+        // Clear all dependent fields if the dropdown is reset
+        form.fullName = '';
+        form.program = '';
+        form.yearLevel = '';
+        form.section = '';
+    }
+});
+
+
+// --- Watcher to Reset Specific Offense (Unchanged) ---
 watch(() => form.offenseCategory, (newCategory, oldCategory) => {
     if (newCategory !== oldCategory) {
         form.specificOffense = ''; 
     }
 });
 
-// --- Notifier Functions ---
+// --- Notifier Functions (Unchanged) ---
 const showNotifier = (message, type = 'success', duration = 3000) => {
     notifier.message = message;
     notifier.type = type;
@@ -232,17 +362,17 @@ const showNotifier = (message, type = 'success', duration = 3000) => {
 
     setTimeout(() => {
         if (notifier.type === 'error') {
-             notifier.visible = false;
+            notifier.visible = false;
         }
-        // Success notification remains visible until explicitly closed or navigated away
     }, duration);
 };
 
 const resetNotifier = () => {
     notifier.visible = false;
+    resetForm(); 
 };
 
-// --- Reset Form Function ---
+// --- Reset Form Function (Unchanged) ---
 const resetForm = () => {
     form.studentId = '';
     form.fullName = '';
@@ -254,25 +384,31 @@ const resetForm = () => {
     form.location = '';
     form.offenseCategory = '';
     form.specificOffense = '';
-    form.description = '';
+    studentsLoadError.value = null;
 };
 
-// --- Navigation ---
+// --- Navigation (Unchanged) ---
 const navigateToDetails = () => {
     if (newIncidentId.value) {
-        router.push({ name: 'IncidentDetails', params: { id: newIncidentId.value } });
+        router.push({ name: 'ReportDetails', params: { id: newIncidentId.value } }); 
     }
     resetNotifier();
 };
 
 // ------------------------------------------------------------------
-// --- VALIDATION AND SUBMISSION METHOD ---
+// --- SUBMISSION METHOD (Unchanged) ---
 // ------------------------------------------------------------------
 const handleSubmit = async () => {
     submitError.value = null;
     validationErrors.value = {}; 
 
-    // --- Client-side Required Field Check (Optional, backend handles strict) ---
+    if (isStudentsLoading.value) {
+        submitError.value = 'Please wait for student roster to finish loading.';
+        showNotifier(submitError.value, 'error', 3000);
+        return;
+    }
+    
+    // Client-side Required Field Check
     const requiredFields = [ 'studentId', 'fullName', 'program', 'yearLevel', 'dateOfIncident', 'timeOfIncident', 'location', 'offenseCategory', 'specificOffense', 'description'];
     let missingFields = requiredFields.filter(field => !form[field] || String(form[field]).trim() === '');
     
@@ -281,7 +417,6 @@ const handleSubmit = async () => {
         submitError.value = `Please fill out all required fields: ${friendlyNames.join(', ')}`;
         return; 
     }
-    // -------------------------------------------------------------------------
     
     isSubmitting.value = true;
     const payload = JSON.parse(JSON.stringify(form));
@@ -292,13 +427,10 @@ const handleSubmit = async () => {
         if (response.status === 201 || response.status === 200) {
             const data = response.data;
             
-            // 🎯 OPTIMIZATION: Extract recommendation and ID
-            recommendationText.value = data.recommendation;
-            newIncidentId.value = data.incident.id;
+            recommendationText.value = data.recommendation || 'The case has been filed and is awaiting review.';
+            newIncidentId.value = data.incident.id || 'N/A'; 
 
-            // Show success notification with special modal-like content
             showNotifier('✅ Incident Successfully Reported!', 'success', 60000); 
-            resetForm();
         }
     } catch (error) {
         let errorMessage = 'An unexpected error occurred.';
@@ -324,7 +456,7 @@ const handleSubmit = async () => {
 </script>
 
 <style scoped>
-/* --- STYLES FOR THE GREEN DESIGN (Based on provided structure) --- */
+/* --- STYLES FOR THE GREEN DESIGN --- */
 
 .report-page {
     width: 100%;
@@ -346,7 +478,7 @@ const handleSubmit = async () => {
     align-items: center;
     padding: 15px 40px;
     height: 50px;
-    background-color: #51A687; /* Header background color */
+    background-color: #51A687; 
     color: white;
     font-weight: bold;
     z-index: 10;
@@ -359,7 +491,6 @@ const handleSubmit = async () => {
     font-size: 1.1rem;
 }
 
-/* Placeholder icons updated to SVG for better styling */
 .header-icon-svg {
     width: 24px;
     height: 24px;
@@ -367,7 +498,7 @@ const handleSubmit = async () => {
     margin-right: 8px;
 }
 .header-icon-svg-profile {
-     width: 28px;
+    width: 28px;
     height: 28px;
     color: #51A687;
 }
@@ -387,7 +518,7 @@ const handleSubmit = async () => {
     max-width: 1000px;
     margin: 20px auto;
     padding: 30px;
-    background-color: #51A687; /* Main container background color */
+    background-color: #51A687; 
     border-radius: 10px;
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
     border: 1px solid #448f72; 
@@ -405,7 +536,7 @@ const handleSubmit = async () => {
 /* --- GRID LAYOUT --- */
 .incident-form-grid {
     display: grid;
-    grid-template-columns: repeat(2, 1fr); /* Two columns */
+    grid-template-columns: repeat(2, 1fr); 
     gap: 20px 30px; 
     align-items: start;
 }
@@ -414,7 +545,7 @@ const handleSubmit = async () => {
     grid-column: 1 / -1;
 }
 
-/* --- INPUT FIELD STYLES --- */
+/* --- INPUT FIELD STYLES (Applies to all inputs/selects) --- */
 .input-group label, .date-time-label {
     display: block;
     font-size: 0.9rem;
@@ -451,12 +582,62 @@ const handleSubmit = async () => {
     min-height: 200px;
 }
 
+/* Auto-filled field style */
+.auto-filled-field {
+    background-color: #f0fff0; /* Light green/off-white */
+    color: #444;
+}
+
 /* Error feedback */
 .error-message {
-    color: #ffdddd; /* Light red/pink over green */
+    color: #ffdddd; 
     font-size: 0.8rem;
     margin-top: 5px;
 }
+
+/* --- STYLES FOR LOOKUP/LOADING FEATURE --- */
+
+.loading-input {
+    background-color: #f0f0f0; 
+    color: #555;
+    font-style: italic;
+    cursor: wait;
+}
+
+/* Status messages for ID Lookup */
+.lookup-status {
+    font-size: 0.8rem;
+    margin-top: 5px;
+    font-weight: 500;
+}
+
+.lookup-loading {
+    color: #ffffff; 
+}
+
+.lookup-error {
+    color: #ffdddd; 
+}
+
+/* Submission Status Styles */
+.submission-status {
+    padding: 10px;
+    margin-bottom: 20px;
+    border-radius: 4px;
+    text-align: center;
+    font-weight: bold;
+}
+
+.submission-loading {
+    background-color: #1a1e1b;
+    color: white;
+}
+
+.submission-error {
+    background-color: #e53e3e;
+    color: white;
+}
+
 
 /* --- BUTTONS --- */
 .form-actions {
@@ -475,11 +656,18 @@ const handleSubmit = async () => {
     font-weight: bold;
     cursor: pointer;
     transition: background-color 0.2s;
-    background-color: #323A36; /* Dark Green/Gray button */
+    background-color: #323A36; 
     color: white;
 }
 
-.form-actions button:hover:not(:disabled) {
+.form-actions button.btn-cancel {
+    background-color: #778899; 
+}
+.form-actions button.btn-cancel:hover:not(:disabled) {
+    background-color: #5d6872;
+}
+
+.form-actions button.btn-save:hover:not(:disabled) {
     background-color: #1a1e1b;
 }
 
@@ -488,7 +676,7 @@ const handleSubmit = async () => {
     opacity: 0.6;
 }
 
-/* --- NOTIFIER (MODIFIED to be success modal) --- */
+/* --- NOTIFIER (Success Modal) */
 .notifier {
     position: fixed;
     top: 50%;
@@ -501,11 +689,10 @@ const handleSubmit = async () => {
     box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
     z-index: 1000;
     width: 350px; 
-    animation: none; /* Removed generic fade-in-out animation */
 }
 
 .notifier-success {
-    background-color: #4CAF50; /* Green Success */
+    background-color: #4CAF50; 
     min-height: 180px; 
     display: flex;
     flex-direction: column;
@@ -522,9 +709,9 @@ const handleSubmit = async () => {
 }
 .recommendation-box {
     padding: 8px;
-    background-color: #81C784; /* Lighter shade of success */
+    background-color: #81C784; 
     border-radius: 4px;
-    color: #1b5e20; /* Dark green text */
+    color: #1b5e20; 
     font-size: 1.1rem;
     word-wrap: break-word;
 }
@@ -551,7 +738,7 @@ const handleSubmit = async () => {
 }
 
 .notifier-error {
-    background-color: #e53e3e; /* Red for Error */
+    background-color: #e53e3e; 
     animation: fadeInOut 5s ease-in-out forwards;
 }
 

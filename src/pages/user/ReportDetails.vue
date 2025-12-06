@@ -1,109 +1,105 @@
 <template>
-  <div :style="reportDetailsContainerStyle">
-    <header :style="headerStyle">
-      <h1 :style="titleStyle">Incident Report Details</h1>
-      <button :style="backButtonStyle" @click="goBack">← Back to History</button>
-    </header>
+    <div :style="reportDetailsContainerStyle">
+        <header :style="headerStyle">
+            <h1 :style="titleStyle">Incident Report Details</h1>
+            <button :style="backButtonStyle" @click="goBack">← Back to History</button>
+        </header>
 
-    <div :style="contentAreaStyle">
-      <p v-if="isLoading" :style="loadingStyle">Loading details for Incident ID: {{ reportId }}...</p>
-      <p v-else-if="errorMessage" :style="errorMessageStyle">Error: {{ errorMessage }}</p>
+        <div :style="contentAreaStyle">
+            <p v-if="isLoading" :style="loadingStyle">Loading details for Incident ID: {{ reportId }}...</p>
+            <p v-else-if="errorMessage" :style="errorMessageStyle">Error: {{ errorMessage }}</p>
 
-      <div v-else-if="reportDetails" :style="detailsCardStyle">
-        
-        <h2 :style="subtitleStyle">Report #{{ reportId }} - **{{ reportDetails.misconduct_type }}**</h2>
-        <hr :style="dividerStyle">
+            <div v-else-if="reportDetails" :style="detailsCardStyle">
+                
+                <h2 :style="subtitleStyle">Report #{{ reportId }} - **{{ reportDetails.misconduct_type }}**</h2>
+                <hr :style="dividerStyle">
 
-        <h3 :style="{'font-size': '1.2rem', 'color': themeColors.darkGreen, 'margin-top': '0px'}">Student Information</h3>
-        <hr :style="dividerStyle">
-        
-        <div :style="detailRowStyle">
-          <span :style="labelStyle">Student ID:</span> 
-          <span :style="valueStyle">{{ reportDetails.student_id }}</span>
-        </div>
+                <h3 :style="{'font-size': '1.2rem', 'color': themeColors.darkGreen, 'margin-top': '0px'}">Student Information</h3>
+                <hr :style="dividerStyle">
+                
+                <div :style="detailRowStyle">
+                    <span :style="labelStyle">Student ID:</span> 
+                    <span :style="valueStyle">{{ reportDetails.student_id }}</span>
+                </div>
 
-        <div :style="detailRowStyle">
-          <span :style="labelStyle">Student Name:</span> 
-          <span :style="valueStyle">{{ reportDetails.student_name }}</span>
-        </div>
+                <div :style="detailRowStyle">
+                    <span :style="labelStyle">Student Name:</span> 
+                    <span :style="valueStyle">{{ reportDetails.student_name }}</span>
+                </div>
 
-        <div :style="detailRowStyle">
-          <span :style="labelStyle">Program / Year Level:</span> 
-          <span :style="valueStyle">{{ reportDetails.program }} - {{ reportDetails.year_level }} ({{ reportDetails.section }})</span>
-        </div>
-        
-        <h3 :style="{'font-size': '1.2rem', 'color': themeColors.darkGreen, 'margin-top': '30px'}">Incident Details</h3>
-        <hr :style="dividerStyle">
+                <div :style="detailRowStyle">
+                    <span :style="labelStyle">Program / Year Level:</span> 
+                    <span :style="valueStyle">{{ reportDetails.program }} - {{ reportDetails.year_level }} ({{ reportDetails.section }})</span>
+                </div>
+                
+                <h3 :style="{'font-size': '1.2rem', 'color': themeColors.darkGreen, 'margin-top': '30px'}">Incident Details</h3>
+                <hr :style="dividerStyle">
 
-        <div :style="detailRowStyle">
-          <span :style="labelStyle">Date & Time:</span> 
-          <span :style="valueStyle">{{ formatDateTime(reportDetails.incident_date) }} @ {{ reportDetails.time_of_incident }}</span>
-        </div>
-        
-        <div :style="detailRowStyle">
-          <span :style="labelStyle">Location:</span> 
-          <span :style="valueStyle">{{ reportDetails.location || 'N/A' }}</span>
-        </div>
+                <div :style="detailRowStyle">
+                    <span :style="labelStyle">Date & Time:</span> 
+                    <span :style="valueStyle">{{ formatDateTime(reportDetails.incident_date) }} @ {{ reportDetails.time_of_incident }}</span>
+                </div>
+                
+                <div :style="detailRowStyle">
+                    <span :style="labelStyle">Location:</span> 
+                    <span :style="valueStyle">{{ reportDetails.location || 'N/A' }}</span>
+                </div>
 
-        <div :style="detailRowStyle">
-          <span :style="labelStyle">Offense Category:</span> 
-          <span :style="valueStyle">{{ reportDetails.offense_category }}</span>
-        </div>
-        
-        <div :style="detailRowStyle">
-          <span :style="labelStyle">Detailed Description:</span> 
-          <p :style="descriptionStyle">{{ reportDetails.description || 'No detailed description provided.' }}</p>
-        </div>
-        
-        <h3 :style="{'font-size': '1.2rem', 'color': themeColors.darkGreen, 'margin-top': '30px'}">Findings & Resolution</h3>
-        <hr :style="dividerStyle">
+                <div :style="detailRowStyle">
+                    <span :style="labelStyle">Offense Category:</span> 
+                    <span :style="valueStyle">{{ reportDetails.offense_category }}</span>
+                </div>
+                
+                <div :style="detailRowStyle">
+                    <span :style="labelStyle">Detailed Description:</span> 
+                    <p :style="descriptionStyle">{{ reportDetails.description || 'No detailed description provided.' }}</p>
+                </div>
+                
+                <h3 :style="{'font-size': '1.2rem', 'color': themeColors.darkGreen, 'margin-top': '30px'}">Findings & Resolution</h3>
+                <hr :style="dividerStyle">
 
-        <div :style="detailRowStyle">
-          <span :style="labelStyle">Current Status:</span> 
-          <span :style="statusDetailStyle(reportDetails.status)">{{ reportDetails.status }}</span>
-        </div>
-        
-        <div :style="detailRowStyle">
-          <span :style="labelStyle">System Recommendation:</span> 
-          <span :style="valueStyle">{{ reportDetails.recommendation || 'N/A' }}</span>
-        </div>
-        
-        <div :style="detailRowStyle">
-          <span :style="labelStyle">Final Action Taken:</span> 
-          <span :style="valueStyle">{{ reportDetails.action_taken || 'Awaiting administrator resolution' }}</span>
-        </div>
-        
-        <div :style="{'margin-top': '30px', 'font-size': '0.9rem', 'color': themeColors.grayText, 'text-align': 'right'}">
-          Filed by User ID: **{{ reportDetails.filer_id }}**
-        </div>
-        
-      </div>
-      
-      <p v-else :style="noDataStyle">Incident report details not found.</p>
+                <div :style="detailRowStyle">
+                    <span :style="labelStyle">Current Status:</span> 
+                    <span :style="statusDetailStyle(reportDetails.status)">{{ reportDetails.status }}</span>
+                </div>
+                
+                <div :style="detailRowStyle">
+                    <span :style="labelStyle">System Recommendation:</span> 
+                    <span :style="valueStyle">{{ reportDetails.recommendation || 'N/A' }}</span>
+                </div>
+                
+                <div :style="detailRowStyle">
+                    <span :style="labelStyle">Final Action Taken:</span> 
+                    <span :style="valueStyle">{{ reportDetails.action_taken || 'Awaiting administrator resolution' }}</span>
+                </div>
+                
+                <div :style="{'margin-top': '30px', 'font-size': '0.9rem', 'color': themeColors.grayText, 'text-align': 'right'}">
+                    Filed by User ID: **{{ reportDetails.filer_id }}**
+                </div>
+                
+            </div>
+            
+            <p v-else :style="noDataStyle">Incident report details not found.</p>
 
+        </div>
     </div>
-  </div>
 </template>
 
 <script setup>
 import { ref, onMounted, computed } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router'; // 🎯 Import useRoute
 import api from '@/services/api'; 
 
 // --- Initialization ---
-const route = useRoute();
+const route = useRoute(); // 🎯 Initialize route
 const router = useRouter();
-const reportId = route.params.id; 
+const reportId = route.params.id; // 🎯 Extract ID from the route parameters
 
 const reportDetails = ref(null);
 const isLoading = ref(true);
 const errorMessage = ref(null);
 
 // --- Functions ---
-
-/**
- * Fetches the specific incident report details from the API.
- */
 const fetchReportDetails = async () => {
     if (!reportId) {
         errorMessage.value = "Invalid report ID.";

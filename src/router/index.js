@@ -44,7 +44,7 @@ const routes = [
     },
     {
         path: '/reports/:id',
-        name: 'ReportDetails',
+        name: 'ReportDetails', // This is the correct route name
         component: ReportDetails,
         props: true,
         meta: { requiresAuth: true }
@@ -89,23 +89,24 @@ const routes = [
         meta: { requiresAuth: true, isAdmin: true }
     },
 
-        {
-    path: '/admin/certificate-generator',
-    name: 'AdminCertificateGenerator',
-    component: () => import('@/pages/admin/CertificateGenerator.vue'),
-    meta: { requiresAuth: true }
+    {
+        path: '/admin/certificate-generator',
+        name: 'AdminCertificateGenerator',
+        component: CertificateGenerator,
+        meta: { requiresAuth: true }
     },
 
     {
-    path: '/certificates',
-    name: 'CertificateGenerator',
-    component: CertificateGenerator
-  },
+        path: '/certificates',
+        name: 'CertificateGenerator',
+        component: CertificateGenerator
+    },
+    
 
     {
-    path: '/admin/profile',
-    name: 'AdminProfile',
-    component: () => import('@/pages/admin/AdminProfile.vue')
+        path: '/admin/profile',
+        name: 'AdminProfile',
+        component: () => import('@/pages/admin/AdminProfile.vue')
     }
 
 ]
