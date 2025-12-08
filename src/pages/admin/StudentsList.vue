@@ -1,134 +1,230 @@
+<template>
+  <AdminNavbar>
+    <div class="student-list-page">
+      <!-- Top banner -->
+      <header class="student-list-header">
+        <div>
+          <h1>STUDENT LIST AND RECORDS</h1>
+          <p>A comprehensive overview of all currently enrolled students.</p>
+        </div>
+
+        <button
+          class="generate-btn"
+          @click="router.push({ name: 'CertificateGenerator' })"
+        >
+          GENERATE<br />
+          CERTIFICATE
+        </button>
+      </header>
+
+      <!-- Notifier -->
+      <transition name="status-bar">
+        <div v-if="showStatusBar" class="status-bar">
+          <div class="status-bar__inner">
+            {{ statusMessage }}
+          </div>
+        </div>
+      </transition>
+
+      <!-- Controls hamburger strip -->
+      <section class="student-controls">
+        <div class="student-controls__search">
+          <input
+            v-model="searchTerm"
+            type="text"
+            placeholder="Search by ID, Name, or Program..."
+          />
+        </div>
+
+        <select
+          v-model="selectedProgram"
+          class="student-controls__filter"
+        >
+          <option value="">Filter by Program (All)</option>
+          <option
+            v-for="program in uniquePrograms"
+            :key="program"
+            :value="program"
+          >
+            {{ program }}
+          </option>
+        </select>
+
+        <div class="student-controls__total">
+          TOTAL STUDENTS: {{ totalStudentsCount }}
+        </div>
+      </section>
+
+      <!-- Table card -->
+      <section class="student-table-card">
+        <div class="student-table-card__inner">
+          <div v-if="isLoading" class="student-loading">
+            <span class="spinner"></span>
+            Loading student list...
+          </div>
+
+          <div v-else-if="error" class="student-error">
+            <p class="student-error__title">Error:</p>
+            <p>{{ error }}</p>
+          </div>
+
+          <div v-else-if="students.length === 0" class="student-empty">
+            <p class="student-empty__title">No Students Found</p>
+            <p class="student-empty__subtitle">
+              The student database is empty or no results match the filters.
+            </p>
+          </div>
+
+          <div v-else class="student-table-wrapper">
+            <table class="student-table">
+              <thead>
+                <tr>
+                  <th @click="toggleSort('student_number')">
+                    STUDENT ID {{ getSortIcon('student_number') }}
+                  </th>
+                  <th @click="toggleSort('full_name')">
+                    STUDENT NAME {{ getSortIcon('full_name') }}
+                  </th>
+                  <th @click="toggleSort('program')">
+                    PROGRAM {{ getSortIcon('program') }}
+                  </th>
+                  <th @click="toggleSort('year_level')">
+                    YEAR LEVEL {{ getSortIcon('year_level') }}
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr
+                  v-for="student in students"
+                  :key="student.student_number"
+                >
+                  <td>{{ student.student_number }}</td>
+                  <td>{{ getFullName(student) }}</td>
+                  <td>{{ student.program }}</td>
+                  <td>{{ student.year_level }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- pagination -->
+          <div
+            v-if="totalPages > 1"
+            class="student-pagination"
+          >
+            <button
+              :disabled="currentPage === 1"
+              @click="prevPage"
+            >
+              Previous
+            </button>
+            <span>Page {{ currentPage }} of {{ totalPages }}</span>
+            <button
+              :disabled="currentPage === totalPages"
+              @click="nextPage"
+            >
+              Next
+            </button>
+          </div>
+        </div>
+      </section>
+    </div>
+  </AdminNavbar>
+</template>
+
 <script setup>
-import { ref, onMounted, computed } from 'vue';
+import { ref, onMounted, computed, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import api from '@/services/api';
 import AdminNavbar from '@/pages/navbar/AdminNavbar.vue';
-import formBg from '@/assets/FORMBACKGROUND.jpg';
 
-// --- State Management ---
+// --- State ---
 const students = ref([]);
 const isLoading = ref(false);
 const error = ref(null);
+
 const searchTerm = ref('');
-const sortBy = ref('student_number');
+const selectedProgram = ref('');
+const sortBy = ref('last_name');
 const sortDirection = ref('asc');
 
-// --- Pagination State ---
 const currentPage = ref(1);
-const itemsPerPage = ref(10); // Display 10 items per page
+const totalPages = ref(1);
+const totalStudentsCount = ref(0);
+const itemsPerPage = ref(10);
 
-// --- Setup ---
 const router = useRouter();
 
-// --- API Fetching Logic ---
+// Notifier
+const showStatusBar = ref(false);
+const statusMessage = ref('');
+
+const triggerStatusBar = (msg) => {
+  statusMessage.value = msg;
+  showStatusBar.value = true;
+  setTimeout(() => {
+      showStatusBar.value = false;
+  }, 3000);
+};
+
+// --- Fetch students ---
 const fetchStudents = async () => {
   isLoading.value = true;
   error.value = null;
   try {
-    const response = await api.get('/students');
-    let receivedData = response.data;
-    if (
-      typeof receivedData === 'object' &&
-      receivedData !== null &&
-      Array.isArray(receivedData.data)
-    ) {
-      receivedData = receivedData.data;
-    }
-    students.value = Array.isArray(receivedData) ? receivedData : [];
-    currentPage.value = 1; // Reset to page 1 on new fetch
+    const response = await api.get('/students', {
+      params: {
+        page: currentPage.value,
+        search: searchTerm.value,
+        program: selectedProgram.value,
+        per_page: itemsPerPage.value,
+        sort_by: sortBy.value,
+        sort_dir: sortDirection.value,
+      },
+    });
+    const data = response.data;
+    students.value = data.data || [];
+    currentPage.value = data.current_page || 1;
+    totalPages.value = data.last_page || 1;
+    totalStudentsCount.value = data.total || 0;
+    triggerStatusBar('Student list updated');
   } catch (err) {
-    let errorMessage = 'Could not load student data.';
-    if (err.response && err.response.data && err.response.data.message) {
-      errorMessage = err.response.data.message;
-    } else if (
-      err.message === 'Network error: Unable to connect to the server.'
-    ) {
-      errorMessage =
-        'Network connection failed. Ensure the Laravel server is running.';
-    }
-    error.value = errorMessage;
+    error.value =
+      err?.response?.data?.message || 'Could not load student data.';
   } finally {
     isLoading.value = false;
   }
 };
 
-// --- Helpers & Computeds ---
-const getFullName = (student) => {
-  const parts = [student.last_name, student.first_name];
-  if (student.middle_name) {
-    parts.push(student.middle_name);
-  }
-  return parts.filter(Boolean).join(' ');
-};
+// --- Computed helpers ---
+const getFullName = (student) =>
+  [student.last_name, student.first_name, student.middle_name]
+    .filter(Boolean)
+    .join(' ');
 
-const filteredStudents = computed(() => {
-  const studentList = students.value || [];
-  if (!searchTerm.value) return studentList;
-  const lowerCaseSearch = searchTerm.value.toLowerCase();
-  return studentList.filter(
-    (student) =>
-      (student.student_number &&
-        student.student_number.toLowerCase().includes(lowerCaseSearch)) ||
-      getFullName(student).toLowerCase().includes(lowerCaseSearch) ||
-      (student.program &&
-        student.program.toLowerCase().includes(lowerCaseSearch)) ||
-      (student.year_level &&
-        student.year_level.toLowerCase().includes(lowerCaseSearch)),
-  );
+const uniquePrograms = computed(() => {
+  const programs = students.value.map((s) => s.program).filter(Boolean);
+  return [...new Set(programs)].sort();
 });
 
-const sortedStudents = computed(() => {
-  const list = Array.isArray(filteredStudents.value)
-    ? [...filteredStudents.value]
-    : [];
-  if (!sortBy.value || list.length === 0) return list;
-  list.sort((a, b) => {
-    let aValue;
-    let bValue;
-    if (sortBy.value === 'full_name') {
-      aValue = a.last_name;
-      bValue = b.last_name;
-    } else if (sortBy.value === 'student_number') {
-      aValue = a.student_number;
-      bValue = b.student_number;
-    } else {
-      aValue = a[sortBy.value];
-      bValue = b[sortBy.value];
-    }
-    const comparison = String(aValue || '').localeCompare(String(bValue || ''));
-    return sortDirection.value === 'asc' ? comparison : -comparison;
-  });
-  return list;
+// --- Watchers ---
+watch([searchTerm, selectedProgram], () => {
+  currentPage.value = 1;
+  fetchStudents();
 });
 
-const paginatedStudents = computed(() => {
-  const start = (currentPage.value - 1) * itemsPerPage.value;
-  const end = start + itemsPerPage.value;
-  return sortedStudents.value.slice(start, end);
-});
-
-const totalPages = computed(() => {
-  return Math.ceil(sortedStudents.value.length / itemsPerPage.value);
-});
-
-// --- Pagination Methods ---
-
+// --- Pagination ---
 const goToPage = (page) => {
   if (page >= 1 && page <= totalPages.value) {
     currentPage.value = page;
+    fetchStudents();
   }
 };
 
-const nextPage = () => {
-  goToPage(currentPage.value + 1);
-};
+const nextPage = () => goToPage(currentPage.value + 1);
+const prevPage = () => goToPage(currentPage.value - 1);
 
-const prevPage = () => {
-  goToPage(currentPage.value - 1);
-};
-
-// --- Utility Methods ---
-
+// --- Sorting UI ---
 const toggleSort = (column) => {
   if (sortBy.value === column) {
     sortDirection.value = sortDirection.value === 'asc' ? 'desc' : 'asc';
@@ -136,487 +232,262 @@ const toggleSort = (column) => {
     sortBy.value = column;
     sortDirection.value = 'asc';
   }
-  currentPage.value = 1; // Reset to first page after sorting
+  currentPage.value = 1;
+  fetchStudents();
 };
 
-const getSortIcon = (column) => {
-  if (sortBy.value !== column) return '—';
-  return sortDirection.value === 'asc' ? '▲' : '▼';
-};
+const getSortIcon = (column) =>
+  sortBy.value !== column ? '—' : sortDirection.value === 'asc' ? '▲' : '▼';
 
 onMounted(fetchStudents);
-
-// --- Layout styles mirroring Incident Reports design ---
-
-const formWrapperOuterStyle = {
-  maxWidth: '1100px',
-  margin: '20px auto 40px auto',
-  padding: '0 20px',
-};
-
-const formWrapperInnerStyle = {
-  padding: '30px',
-  borderRadius: '30px',
-  backgroundImage: `url(${formBg})`,
-  backgroundSize: 'cover',
-  backgroundPosition: 'center',
-  boxShadow: '0 10px 20px rgba(0,0,0,0.25)',
-  position: 'relative',
-};
-
-const sectionHeaderStyle = {
-  position: 'absolute',
-  top: '10px',
-  left: '40px',
-  padding: '8px 25px',
-  background: '#ffffff',
-  borderRadius: '999px',
-  fontWeight: 'bold',
-  fontSize: '1rem',
-  zIndex: 2,
-};
-
-const contentCardStyle = {
-  background: 'rgba(255,255,255,0.9)',
-  borderRadius: '25px',
-  padding: '45px 35px 35px 35px',
-  display: 'flex',
-  flexDirection: 'column',
-};
-
-const cardHeadingStyle = {
-  fontSize: '1.4rem',
-  fontWeight: '800',
-  color: '#1d3e21',
-  margin: '0 0 6px 0',
-  textAlign: 'center',
-};
-
-const subHeadingStyle = {
-  color: '#4b5563',
-  marginBottom: '18px',
-  fontSize: '0.9rem',
-  textAlign: 'center',
-};
-
-// Control bar (search + total + button)
-const controlBarStyle = {
-  display: 'flex',
-  justifyContent: 'space-between',
-  alignItems: 'center',
-  background: '#ffffff',
-  padding: '10px 18px',
-  borderRadius: '999px',
-  boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-  marginBottom: '18px',
-};
-
-const searchWrapperStyle = {
-  width: '50%',
-  position: 'relative',
-};
-
-const searchInputStyle = {
-  width: '100%',
-  padding: '8px 10px 8px 36px',
-  border: 'none',
-  borderRadius: '999px',
-  outline: 'none',
-  fontSize: '0.85rem',
-  boxShadow: '0 1px 3px rgba(0,0,0,0.12)',
-};
-
-const searchIconStyle = {
-  position: 'absolute',
-  left: '10px',
-  top: '50%',
-  transform: 'translateY(-50%)',
-  width: '18px',
-  height: '18px',
-  color: '#9ca3af',
-};
-
-const totalStudentsStyle = {
-  fontSize: '0.95rem',
-  fontWeight: '600',
-  color: '#1d3e21',
-};
-
-const navButtonStyle = {
-  display: 'flex',
-  alignItems: 'center',
-  padding: '8px 15px',
-  background: '#064b2a',
-  color: '#fff',
-  border: 'none',
-  borderRadius: '999px',
-  cursor: 'pointer',
-  fontSize: '0.85rem',
-  fontWeight: 'bold',
-  boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
-};
-
-// Messages
-const loadingStyle = {
-  textAlign: 'center',
-  padding: '24px',
-  color: '#1d3e21',
-  fontWeight: '600',
-  fontSize: '1rem',
-};
-
-const spinnerStyle = {
-  display: 'inline-block',
-  width: '20px',
-  height: '20px',
-  marginRight: '8px',
-  // FIX: Converted hyphenated CSS property to camelCase for JavaScript object key
-  verticalAlign: 'middle', 
-};
-
-const errorBoxStyle = computed(() => {
-  const base = {
-    padding: '10px',
-    marginBottom: '10px',
-    borderRadius: '8px',
-    boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-    fontWeight: '600',
-    border: '1px solid',
-    fontSize: '0.85rem',
-  };
-  if (error.value && error.value.startsWith('✅')) {
-    return {
-      ...base,
-      backgroundColor: '#d4edda',
-      color: '#155724',
-      borderColor: '#c3e6cb',
-    };
-  }
-  return {
-    ...base,
-    backgroundColor: '#f8d7da',
-    color: '#721c24',
-    borderColor: '#f5c6cb',
-  };
-});
-
-const errorTitleStyle = {
-  fontWeight: '700',
-};
-
-const noDataStyle = {
-  textAlign: 'center',
-  padding: '32px',
-  background: '#ffffff',
-  borderRadius: '18px',
-  boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
-  border: '1px solid #e5e7eb',
-};
-
-const noDataTitleStyle = {
-  fontSize: '1.2rem',
-  fontWeight: '700',
-  color: '#6b7280',
-};
-
-const noDataSubTitleStyle = {
-  color: '#9ca3af',
-  marginTop: '6px',
-};
-
-// Table panel (same style idea as incident table)
-const tableOuterPanelStyle = {
-  marginTop: '4px',
-  borderRadius: '22px',
-  padding: '10px',
-  background:
-    'linear-gradient(145deg, rgba(0,128,96,0.35), rgba(0,80,180,0.45))',
-};
-
-const tableWrapperStyle = {
-  overflowX: 'auto',
-  borderRadius: '18px',
-  background: 'rgba(0,0,0,0.15)',
-};
-
-const tableStyle = {
-  width: '100%',
-  borderCollapse: 'separate',
-  borderSpacing: 0,
-};
-
-const tableHeaderStyle = {
-  background: '#064b2a',
-  color: '#ffffff',
-};
-
-const tableHeaderCellStyle = (position) => {
-  let radius = {};
-  if (position === 'tl') radius = { borderTopLeftRadius: '16px' };
-  if (position === 'tr') radius = { borderTopRightRadius: '16px' };
-  return {
-    padding: '10px 16px',
-    textAlign: 'left',
-    fontSize: '0.75rem',
-    fontWeight: '600',
-    textTransform: 'uppercase',
-    letterSpacing: '0.06em',
-    cursor: 'pointer',
-    ...radius,
-  };
-};
-
-const tableBodyStyle = {
-  background: 'transparent',
-};
-
-const tableRowStyle = {
-  transition: 'background-color 0.15s',
-};
-
-const tableDataCellStyle = (type) => {
-  let color = '#e5fdf4';
-  let fontWeight = '400';
-  let textAlign = 'left';
-  if (type === 'id' || type === 'name') {
-    color = '#ffffff';
-    fontWeight = '600';
-  }
-  return {
-    padding: '10px 16px',
-    fontSize: '0.85rem',
-    color,
-    fontWeight,
-    textAlign,
-    borderBottom: '1px solid rgba(255,255,255,0.25)',
-    whiteSpace: 'nowrap',
-  };
-};
-
-const noSearchResultsStyle = {
-  textAlign: 'center',
-  padding: '20px',
-  color: '#f9fafb',
-  fontStyle: 'italic',
-  fontSize: '0.9rem',
-};
-
-const paginationContainerStyle = {
-  display: 'flex',
-  justifyContent: 'flex-end',
-  alignItems: 'center',
-  marginTop: '15px',
-  padding: '8px 15px',
-  backgroundColor: 'rgba(255,255,255,0.7)',
-  borderRadius: '10px',
-  boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-};
-
-const paginationButtonStyle = (isDisabled) => ({
-  padding: '6px 12px',
-  margin: '0 4px',
-  border: 'none',
-  borderRadius: '5px',
-  cursor: isDisabled ? 'not-allowed' : 'pointer',
-  backgroundColor: isDisabled ? '#e0e0e0' : '#1d3e21',
-  color: isDisabled ? '#a0a0a0' : '#ffffff',
-  fontWeight: '600',
-  transition: 'background-color 0.2s',
-});
-
-const paginationInfoStyle = {
-  margin: '0 15px',
-  fontSize: '0.9rem',
-  color: '#1d3e21',
-  fontWeight: '600',
-};
 </script>
-
-<template>
-  <AdminNavbar>
-
-    <div :style="formWrapperOuterStyle">
-      <div :style="formWrapperInnerStyle">
-        <div :style="sectionHeaderStyle">STUDENT DIRECTORY</div>
-
-        <div :style="contentCardStyle">
-          <h2 :style="cardHeadingStyle">Student Directory</h2>
-          <p :style="subHeadingStyle">
-            Manage all registered students in the system.
-          </p>
-
-          <div :style="controlBarStyle">
-            <div :style="searchWrapperStyle">
-              <input
-                type="text"
-                v-model="searchTerm"
-                placeholder="Search by ID, Name, or Program..."
-                :style="searchInputStyle"
-              />
-              <svg
-                :style="searchIconStyle"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                />
-              </svg>
-            </div>
-
-            <div style="display: flex; gap: 12px; align-items: center;">
-              <div :style="totalStudentsStyle">
-                TOTAL STUDENTS: {{ students.length }}
-              </div>
-              <button
-                :style="navButtonStyle"
-                @click="router.push({ name: 'CertificateGenerator' })"
-              >
-                Generate Certificate
-              </button>
-            </div>
-          </div>
-
-          <div v-if="isLoading" :style="loadingStyle">
-            <svg
-              class="animate-spin"
-              :style="spinnerStyle"
-              viewBox="0 0 24 24"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <circle
-                class="opacity-25"
-                cx="12"
-                cy="12"
-                r="10"
-                stroke="currentColor"
-                stroke-width="4"
-              />
-              <path
-                class="opacity-75"
-                fill="currentColor"
-                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-              />
-            </svg>
-            Loading student list...
-          </div>
-
-          <div v-else-if="error" :style="errorBoxStyle">
-            <p :style="errorTitleStyle">Error:</p>
-            <p>{{ error }}</p>
-          </div>
-
-          <div
-            v-else-if="students.length === 0 && !isLoading && !error"
-            :style="noDataStyle"
-          >
-            <p :style="noDataTitleStyle">No Students Found</p>
-            <p :style="noDataSubTitleStyle">
-              The student database is currently empty.
-            </p>
-          </div>
-
-          <div v-else :style="tableOuterPanelStyle">
-            <div :style="tableWrapperStyle">
-              <table :style="tableStyle">
-                <thead :style="tableHeaderStyle">
-                  <tr>
-                    <th
-                      :style="tableHeaderCellStyle('tl')"
-                      @click="toggleSort('student_number')"
-                    >
-                      ID {{ getSortIcon('student_number') }}
-                    </th>
-                    <th
-                      :style="tableHeaderCellStyle('')"
-                      @click="toggleSort('full_name')"
-                    >
-                      STUDENT NAME {{ getSortIcon('full_name') }}
-                    </th>
-                    <th
-                      :style="tableHeaderCellStyle('')"
-                      @click="toggleSort('program')"
-                    >
-                      PROGRAM {{ getSortIcon('program') }}
-                    </th>
-                    <th
-                      :style="tableHeaderCellStyle('tr')"
-                      @click="toggleSort('year_level')"
-                    >
-                      YEAR LEVEL {{ getSortIcon('year_level') }}
-                    </th>
-                  </tr>
-                </thead>
-                <tbody :style="tableBodyStyle">
-                  <tr
-                    v-for="student in paginatedStudents"
-                    :key="student.student_number"
-                    :style="tableRowStyle"
-                  >
-                    <td :style="tableDataCellStyle('id')">
-                      {{ student.student_number }}
-                    </td>
-                    <td :style="tableDataCellStyle('name')">
-                      {{ getFullName(student) }}
-                    </td>
-                    <td :style="tableDataCellStyle('normal')">
-                      {{ student.program }}
-                    </td>
-                    <td :style="tableDataCellStyle('normal')">
-                      {{ student.year_level }}
-                    </td>
-                  </tr>
-
-                  <tr
-                    v-if="students.length > 0 && paginatedStudents.length === 0"
-                  >
-                    <td colspan="4" :style="noSearchResultsStyle">
-                      No results found for "{{ searchTerm }}" on this page.
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-
-            <div v-if="totalPages > 1" :style="paginationContainerStyle">
-                <button 
-                    @click="prevPage" 
-                    :disabled="currentPage === 1" 
-                    :style="paginationButtonStyle(currentPage === 1)">
-                    Previous
-                </button>
-                <span :style="paginationInfoStyle">
-                    Page {{ currentPage }} of {{ totalPages }}
-                </span>
-                <button 
-                    @click="nextPage" 
-                    :disabled="currentPage === totalPages" 
-                    :style="paginationButtonStyle(currentPage === totalPages)">
-                    Next
-                </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </AdminNavbar>
-</template>
-
 <style scoped>
-:global(html),
-:global(body) {
-  margin: 0;
-  padding: 0;
-  width: 100%;
-  overflow-x: hidden;
+.student-list-page {
+  min-height: 100vh;
+  padding: 24px;
+  background-color: #74a765;
+  box-sizing: border-box;
 }
 
+/* Header */
+.student-list-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: #e1f3d5;
+  border-radius: 16px;
+  padding: 16px 24px;
+  color: #0b3a23;
+  margin-bottom: 14px;
+}
+
+.student-list-header h1 {
+  margin: 0 0 4px;
+  font-size: 1.6rem;
+  font-weight: 800;
+}
+
+.student-list-header p {
+  margin: 0;
+  font-size: 0.85rem;
+}
+
+.generate-btn {
+  border: none;
+  border-radius: 16px;
+  padding: 10px 26px;
+  background-color: #74a765;
+  color: #e1f3d5;
+  font-size: 0.85rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+/* Notifier */
+.status-bar {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  margin-bottom: 10px;
+}
+
+.status-bar__inner {
+  max-width: 1000px;
+  width: 100%;
+  background-color: #e9f8e4;
+  color: #000;
+  font-weight: 700;
+  font-size: 0.95rem;
+  border-radius: 20px;
+  box-shadow: inset 0 0 0 4px #003b23, 0 4px 10px rgba(0, 0, 0, 0.2);
+  padding: 8px 12px;
+  text-align: center;
+}
+
+.status-bar-enter-active,
+.status-bar-leave-active {
+  transition: opacity 0.25s, transform 0.25s;
+}
+.status-bar-enter-from,
+.status-bar-leave-to {
+  opacity: 0;
+  transform: translateY(-10px);
+}
+
+/* Controls strip */
+.student-controls {
+  display: grid;
+  grid-template-columns: 1.8fr 1.1fr 0.9fr;
+  gap: 12px;
+  background-color: #dfead6;
+  border-radius: 999px;
+  padding: 8px 14px;
+  margin-bottom: 14px;
+}
+
+.student-controls__search input {
+  width: 100%;
+  border-radius: 999px;
+  border: none;
+  padding: 8px 12px;
+  font-size: 0.85rem;
+  outline: none;
+  background-color: #ffffff;
+}
+
+.student-controls__filter {
+  border-radius: 999px;
+  border: none;
+  padding: 8px 12px;
+  font-size: 0.8rem;
+  background-color: #ffffff;
+  outline: none;
+}
+
+.student-controls__total {
+  border-radius: 999px;
+  background-color: #5c864f;
+  color: #f9fffa;
+  font-size: 0.8rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Table card */
+.student-table-card {
+  background-color: #0b3a23;
+  border-radius: 20px;
+  padding: 10px;
+}
+
+.student-table-card__inner {
+  background-color: #f1fbe5;
+  border-radius: 16px;
+  padding: 10px;
+}
+
+/* states */
+.student-loading,
+.student-empty {
+  text-align: center;
+  padding: 28px;
+}
+
+.student-empty__title {
+  font-weight: 700;
+  font-size: 1rem;
+  color: #6b7280;
+}
+
+.student-empty__subtitle {
+  color: #9ca3af;
+  font-size: 0.85rem;
+}
+
+.student-error {
+  padding: 10px 14px;
+  border-radius: 10px;
+  background-color: #f8d7da;
+  color: #721c24;
+  border: 1px solid #f5c6cb;
+  font-size: 0.85rem;
+  margin-bottom: 10px;
+}
+
+.student-error__title {
+  font-weight: 700;
+  margin: 0 0 4px;
+}
+
+/* spinner */
+.spinner {
+  display: inline-block;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid rgba(11, 58, 35, 0.25);
+  border-top-color: #0b3a23;
+  animation: spin 1s linear infinite;
+  margin-right: 6px;
+  vertical-align: middle;
+}
+
+/* table */
+.student-table-wrapper {
+  overflow-x: auto;
+  border-radius: 16px;
+  background-color: #e1f3d5;
+}
+
+.student-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 700px;
+}
+
+.student-table thead {
+  background-color: #064b2a;
+  color: #ffffff;
+}
+
+.student-table th {
+  padding: 10px 16px;
+  font-size: 0.75rem;
+  text-align: left;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+}
+
+.student-table tbody tr:nth-child(even) {
+  background-color: #e1f3d5;
+}
+.student-table tbody tr:nth-child(odd) {
+  background-color: #e1f3d5;
+}
+
+.student-table td {
+  padding: 10px 16px;
+  font-size: 0.85rem;
+  border-bottom: 1px solid rgba(12, 61, 36, 0.25);
+}
+
+/* pagination */
+.student-pagination {
+  margin-top: 10px;
+  padding: 8px 10px;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 10px;
+}
+
+.student-pagination button {
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: none;
+  cursor: pointer;
+  background-color: #0b3a23;
+  color: #ffffff;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.student-pagination button:disabled {
+  background-color: #cbd5e1;
+  color: #64748b;
+  cursor: not-allowed;
+}
+
+.student-pagination span {
+  font-size: 0.85rem;
+  color: #0b3a23;
+}
+
+/* spin keyframes */
 @keyframes spin {
   from {
     transform: rotate(0deg);
@@ -624,8 +495,5 @@ const paginationInfoStyle = {
   to {
     transform: rotate(360deg);
   }
-}
-.animate-spin {
-  animation: spin 1s linear infinite;
 }
 </style>

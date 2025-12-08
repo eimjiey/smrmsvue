@@ -2,336 +2,590 @@
 import { reactive, ref, onMounted } from 'vue';
 import api from '@/services/api';
 import { useRouter } from 'vue-router';
-import UserNavbar from '@/components/UserNavbar.vue'; 
+import UserNavbar from '@/components/UserNavbar.vue';
 
 // --- Setup ---
 const router = useRouter();
 
 // --- Component State ---
 const user = reactive({
-    id: null,
-    name: '',
-    email: '',
-    // Stored raw path (e.g., 'profiles/abc.jpg')
-    profilePicturePath: '', 
-    // Computed full URL with cache-buster
-    profilePictureUrl: null,
-    // NEW: Timestamp for cache busting
-    profilePictureTimestamp: Date.now(), 
-    role: '',
-    // Fields for optional updates:
-    newPassword: '',
-    newPasswordConfirmation: '',
-    originalName: '', // Used for reset/tracking changes
-    originalEmail: '', // Used for reset/tracking changes
+  id: null,
+  name: '',
+  email: '',
+  profilePicturePath: '',
+  profilePictureUrl: null,
+  profilePictureTimestamp: Date.now(),
+  role: '',
+  newPassword: '',
+  newPasswordConfirmation: '',
+  originalName: '',
+  originalEmail: '',
 });
 
 const profileImageFile = ref(null);
 const isLoading = ref(true);
 const isSubmitting = ref(false);
 const statusMessage = ref(null);
-const statusType = ref(''); // 'success' or 'error'
-const isEditingDetails = ref(false); // State to control Name/Email fields
+const statusType = ref(''); // 'success' | 'error'
+const isEditingDetails = ref(false);
 
 // --- Constants ---
 const DEFAULT_AVATAR = 'https://placehold.co/100x100/A0AEC0/ffffff?text=User';
-// !! CRITICAL: This was changed to a relative path to see if it resolves the network issue. 
-// If your storage link is correct, using a relative path like '/storage/' often works
-// when the front-end is proxied to the backend.
-const STORAGE_PATH = '/storage/'; 
+const STORAGE_PATH = '/storage/';
 
-// --- Helper Functions ---
-
+// --- Helpers ---
 const getImagePath = (path) => {
-    // If path is null/empty, or if it's already a full URL 
-    if (!path || path.startsWith('http')) {
-        return DEFAULT_AVATAR;
-    }
-    
-    // Construct the base permanent URL
-    // If STORAGE_PATH is relative ('/storage/'), it uses the current host (localhost:8080 or the proxied host).
-    let fullUrl = STORAGE_PATH + path;
-
-    // Append the timestamp to force browser reload (cache bust)
-    // This is necessary because Laravel generates a unique HASHED FILENAME,
-    // but the browser might still be caching the old path.
-    if (user.profilePictureTimestamp) {
-        fullUrl += `?t=${user.profilePictureTimestamp}`;
-    }
-    
-    return fullUrl;
+  if (!path || path.startsWith('http')) {
+    return DEFAULT_AVATAR;
+  }
+  let fullUrl = STORAGE_PATH + path;
+  if (user.profilePictureTimestamp) {
+    fullUrl += `?t=${user.profilePictureTimestamp}`;
+  }
+  return fullUrl;
 };
 
-// --- Profile Details Logic ---
-
+// --- Profile Logic ---
 const fetchProfile = async () => {
-    isLoading.value = true;
-    statusMessage.value = null;
-    try {
-        // The API call uses the 'api' instance, which should handle the base URL (http://192.168.8.50:8000/api)
-        const response = await api.get('/me');
-        const data = response.data;
+  isLoading.value = true;
+  statusMessage.value = null;
+  try {
+    const response = await api.get('/me');
+    const data = response.data;
 
-        user.id = data.id;
-        user.name = data.name;
-        user.email = data.email;
-        user.role = data.role;
-        
-        // Store the raw path
-        user.profilePicturePath = data.profile_picture;
-        // Update timestamp and compute the full URL with cache-buster
-        user.profilePictureTimestamp = Date.now(); 
-        user.profilePictureUrl = getImagePath(data.profile_picture); 
+    user.id = data.id;
+    user.name = data.name;
+    user.email = data.email;
+    user.role = data.role;
 
-        // Store original values for comparison/reset
-        user.originalName = data.name;
-        user.originalEmail = data.email;
+    user.profilePicturePath = data.profile_picture;
+    user.profilePictureTimestamp = Date.now();
+    user.profilePictureUrl = getImagePath(data.profile_picture);
 
-    } catch (error) {
-        statusType.value = 'error';
-        // Improved error messaging for network failure
-        const networkError = error.message && error.message.includes('Network error');
-        statusMessage.value = networkError 
-            ? 'Network error: Unable to connect to the server. Please check your network connection and ensure the backend server is running at http://192.168.8.50:8000.'
-            : (error.response?.data?.message || 'Failed to load profile data.');
-        console.error('Fetch profile error:', error);
-    } finally {
-        isLoading.value = false;
-    }
+    user.originalName = data.name;
+    user.originalEmail = data.email;
+  } catch (error) {
+    statusType.value = 'error';
+    const networkError =
+      error.message && error.message.toLowerCase().includes('network');
+    statusMessage.value = networkError
+      ? 'Network error: Unable to connect to the server. Please check your network connection and ensure the backend server is running.'
+      : error.response?.data?.message || 'Failed to load profile data.';
+    console.error('Fetch profile error:', error);
+  } finally {
+    isLoading.value = false;
+  }
 };
 
 const toggleEditDetails = () => {
-    isEditingDetails.value = !isEditingDetails.value;
-    // If cancelling, revert changes
-    if (!isEditingDetails.value) {
-        user.name = user.originalName;
-        user.email = user.originalEmail;
-    }
+  isEditingDetails.value = !isEditingDetails.value;
+  if (!isEditingDetails.value) {
+    user.name = user.originalName;
+    user.email = user.originalEmail;
+  }
 };
 
 const handleFileUpload = (event) => {
-    profileImageFile.value = event.target.files[0];
-    if (profileImageFile.value) {
-        // Show local file preview (temporary object URL)
-        user.profilePictureUrl = URL.createObjectURL(profileImageFile.value);
-    }
+  profileImageFile.value = event.target.files[0];
+  if (profileImageFile.value) {
+    user.profilePictureUrl = URL.createObjectURL(profileImageFile.value);
+  }
 };
 
 const handleProfileUpdate = async (event) => {
-    event.preventDefault();
-    isSubmitting.value = true;
-    statusMessage.value = null;
+  event.preventDefault();
+  isSubmitting.value = true;
+  statusMessage.value = null;
 
-    try {
-        const formData = new FormData();
-        formData.append('name', user.name);
-        formData.append('email', user.email);
-        // Important: Tell Laravel it's a PUT/PATCH request
-        formData.append('_method', 'PUT'); 
+  try {
+    const formData = new FormData();
+    formData.append('name', user.name);
+    formData.append('email', user.email);
+    formData.append('_method', 'PUT');
 
-        if (profileImageFile.value) {
-            formData.append('profile_picture', profileImageFile.value);
-        }
-
-        if (user.newPassword) {
-            formData.append('password', user.newPassword);
-            formData.append('password_confirmation', user.newPasswordConfirmation);
-        }
-        
-        const response = await api.post('/profile', formData, {
-            headers: { 'Content-Type': 'multipart/form-data' },
-        });
-
-        statusType.value = 'success';
-        statusMessage.value = response.data.message || 'Profile updated successfully!';
-        
-        const updatedUser = response.data.user;
-
-        // 1. Update local state with fresh data from server
-        user.name = updatedUser.name;
-        user.email = updatedUser.email;
-        user.role = updatedUser.role;
-
-        // 2. Update profile picture path/URL and CRITICAL: update timestamp
-        user.profilePicturePath = updatedUser.profile_picture;
-        user.profilePictureTimestamp = Date.now(); // FORCES CACHE BUSTING on the NEW path
-        user.profilePictureUrl = getImagePath(updatedUser.profile_picture);
-        
-        // 3. Store original values for comparison/reset
-        user.originalName = updatedUser.name;
-        user.originalEmail = updatedUser.email;
-
-        // 4. Clear password and file input state
-        user.newPassword = '';
-        user.newPasswordConfirmation = '';
-        profileImageFile.value = null;
-
-        // 5. Disable editing mode on successful save
-        isEditingDetails.value = false; 
-
-        // 6. Update local storage user data
-        localStorage.setItem('user', JSON.stringify(updatedUser));
-
-
-    } catch (error) {
-        statusType.value = 'error';
-        let errorMessage = error.response?.data?.message || 'Failed to update profile.';
-        if (error.response?.data?.errors) {
-             errorMessage += ': ' + Object.values(error.response.data.errors).flat().join('; ');
-        }
-        statusMessage.value = errorMessage;
-        console.error('Profile update error:', error);
-    } finally {
-        isSubmitting.value = false;
-        setTimeout(() => { statusMessage.value = null; }, 7000);
+    if (profileImageFile.value) {
+      formData.append('profile_picture', profileImageFile.value);
     }
+
+    if (user.newPassword) {
+      formData.append('password', user.newPassword);
+      formData.append('password_confirmation', user.newPasswordConfirmation);
+    }
+
+    const response = await api.post('/profile', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+
+    statusType.value = 'success';
+    statusMessage.value =
+      response.data.message || 'Profile updated successfully!';
+
+    const updatedUser = response.data.user;
+
+    user.name = updatedUser.name;
+    user.email = updatedUser.email;
+    user.role = updatedUser.role;
+
+    user.profilePicturePath = updatedUser.profile_picture;
+    user.profilePictureTimestamp = Date.now();
+    user.profilePictureUrl = getImagePath(updatedUser.profile_picture);
+
+    user.originalName = updatedUser.name;
+    user.originalEmail = updatedUser.email;
+
+    user.newPassword = '';
+    user.newPasswordConfirmation = '';
+    profileImageFile.value = null;
+
+    isEditingDetails.value = false;
+
+    localStorage.setItem('user', JSON.stringify(updatedUser));
+  } catch (error) {
+    statusType.value = 'error';
+    let errorMessage =
+      error.response?.data?.message || 'Failed to update profile.';
+    if (error.response?.data?.errors) {
+      errorMessage +=
+        ': ' +
+        Object.values(error.response.data.errors).flat().join('; ');
+    }
+    statusMessage.value = errorMessage;
+    console.error('Profile update error:', error);
+  } finally {
+    isSubmitting.value = false;
+    setTimeout(() => {
+      statusMessage.value = null;
+    }, 7000);
+  }
 };
 
 const logout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    router.push('/login');
+  localStorage.removeItem('token');
+  localStorage.removeItem('user');
+  router.push('/login');
 };
-
 
 onMounted(fetchProfile);
 </script>
 
 <template>
-    <div class="user-profile-container min-h-screen bg-gray-50">
-        <UserNavbar />
-        
-        <div class="profile-content max-w-2xl bg-white rounded-xl shadow-2xl p-6 md:p-8">
-            <h1 class="text-3xl font-extrabold text-indigo-700 mb-6 border-b-4 border-indigo-200 pb-3">
-                Your Profile Settings
-            </h1>
+  <div class="user-profile-container">
+    <UserNavbar />
 
-            <!-- Loading State -->
-            <div v-if="isLoading" class="text-center p-12 text-indigo-600 font-semibold text-xl">
-                Loading profile...
-            </div>
+    <div class="profile-content">
+      <h1>Your Profile Settings</h1>
 
-            <form v-else @submit="handleProfileUpdate" class="space-y-8">
-                <!-- Status Message Display -->
-                <div v-if="statusMessage" 
-                     :class="{'bg-green-100 border-green-500 text-green-700': statusType === 'success', 'bg-red-100 border-red-500 text-red-700': statusType === 'error'}" 
-                     class="border p-4 rounded-lg shadow-md font-semibold transition-opacity duration-500">
-                    <p class="font-bold">{{ statusType === 'success' ? 'Success' : 'Error' }}:</p>
-                    <p>{{ statusMessage }}</p>
-                </div>
+      <!-- Loading State -->
+      <div
+        v-if="isLoading"
+        class="text-center p-10 text-indigo-700 font-semibold text-lg"
+      >
+        Loading profile...
+      </div>
 
-                <!-- Section 1: Profile Picture Upload -->
-                <div class="border border-gray-200 p-4 rounded-xl bg-gray-50">
-                    <h2 class="text-xl font-semibold text-gray-700 mb-4">Profile Picture</h2>
-                    <div class="flex flex-col sm:flex-row items-center space-y-4 sm:space-y-0 sm:space-x-6">
-                        <!-- Current/Preview Avatar -->
-                        <img 
-                            :src="user.profilePictureUrl" 
-                            alt="Profile Avatar" 
-                            class="w-24 h-24 object-cover rounded-full border-4 border-indigo-500 shadow-lg"
-                            @error="user.profilePictureUrl = DEFAULT_AVATAR"
-                        />
-                        
-                        <!-- File Input -->
-                        <div class="flex flex-col space-y-2 w-full">
-                            <label class="block text-sm font-medium text-gray-700">Change Avatar (Max 2MB)</label>
-                            <input 
-                                type="file" 
-                                @change="handleFileUpload"
-                                accept="image/png, image/jpeg, image/gif"
-                                :disabled="isSubmitting"
-                                class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
-                            />
-                            <p v-if="profileImageFile" class="text-xs text-indigo-600">
-                                File selected: {{ profileImageFile.name }}
-                            </p>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Section 2: Account Details -->
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4 border border-indigo-200 p-4 rounded-xl bg-indigo-50/50">
-                    <div class="md:col-span-2 flex justify-between items-center">
-                        <h2 class="text-xl font-semibold text-indigo-600">Account Information</h2>
-                        <!-- NEW EDIT BUTTON -->
-                        <button 
-                            type="button" 
-                            @click="toggleEditDetails" 
-                            :disabled="isSubmitting"
-                            class="py-1 px-3 text-sm font-medium rounded-lg transition"
-                            :class="isEditingDetails ? 'bg-red-500 text-white hover:bg-red-600' : 'bg-indigo-500 text-white hover:bg-indigo-600'">
-                            {{ isEditingDetails ? 'Cancel Edit' : 'Edit Details' }}
-                        </button>
-                    </div>
-
-                    <div class="col-span-1">
-                        <label for="name" class="block text-sm font-medium text-gray-700">Full Name</label>
-                        <input type="text" id="name" v-model="user.name" required 
-                            :disabled="isSubmitting || !isEditingDetails"
-                            class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-2.5 border transition duration-150"
-                            :class="{ 'bg-gray-100 cursor-not-allowed': !isEditingDetails }"
-                            >
-                    </div>
-
-                    <div class="col-span-1">
-                        <label for="email" class="block text-sm font-medium text-gray-700">Email Address (Login)</label>
-                        <input type="email" id="email" v-model="user.email" required 
-                            :disabled="isSubmitting || !isEditingDetails"
-                            class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-2.5 border transition duration-150"
-                            :class="{ 'bg-gray-100 cursor-not-allowed': !isEditingDetails }"
-                            >
-                    </div>
-
-                    <div class="md:col-span-2 text-sm text-gray-500">
-                        <p>User Role: <span class="font-bold text-indigo-700">{{ user.role }}</span></p>
-                    </div>
-                </div>
-
-                <!-- Section 3: Change Password -->
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4 border border-yellow-300 p-4 rounded-xl bg-yellow-50/50">
-                    <div class="md:col-span-2">
-                        <h2 class="text-xl font-semibold text-yellow-700 mb-3">Change Password</h2>
-                        <p class="text-sm text-gray-600 mb-3">Leave fields blank if you do not wish to change your password.</p>
-                    </div>
-
-                    <div class="col-span-1">
-                        <label for="newPassword" class="block text-sm font-medium text-gray-700">New Password</label>
-                        <input type="password" id="newPassword" v-model="user.newPassword" :disabled="isSubmitting"
-                            class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 p-2.5 border transition duration-150">
-                    </div>
-
-                    <div class="col-span-1">
-                        <label for="confirmPassword" class="block text-sm font-medium text-gray-700">Confirm Password</label>
-                        <input type="password" id="confirmPassword" v-model="user.newPasswordConfirmation" :disabled="isSubmitting"
-                            class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 p-2.5 border transition duration-150">
-                    </div>
-                </div>
-
-                <!-- Submission Button and Logout -->
-                <div class="pt-4 flex justify-between space-x-4">
-                    <button type="button" @click="logout" class="py-3 px-4 rounded-lg shadow-md text-lg font-bold bg-red-600 text-white hover:bg-red-700 transition duration-300">
-                        Logout
-                    </button>
-                    <button type="submit" :disabled="isSubmitting"
-                        class="flex-1 py-3 px-4 border border-transparent rounded-lg shadow-xl text-lg font-bold text-white bg-green-600 hover:bg-green-800 focus:outline-none focus:ring-4 focus:ring-offset-2 focus:ring-green-500 transition duration-300 ease-in-out transform hover:-translate-y-0.5"
-                        :class="{ 'opacity-50 cursor-not-allowed': isSubmitting }">
-                        {{ isSubmitting ? 'Saving Profile...' : 'Update Profile' }}
-                    </button>
-                </div>
-            </form>
+      <form v-else @submit="handleProfileUpdate" class="space-y-6">
+        <!-- Status Message -->
+        <div
+          v-if="statusMessage"
+          :class="{
+            'bg-green-100 border-green-500 text-green-700':
+              statusType === 'success',
+            'bg-red-100 border-red-500 text-red-700': statusType === 'error',
+          }"
+          class="border p-4 rounded-lg shadow-sm text-sm"
+        >
+          <p class="font-bold mb-1">
+            {{ statusType === 'success' ? 'Success' : 'Error' }}:
+          </p>
+          <p>{{ statusMessage }}</p>
         </div>
+
+        <!-- Profile Picture -->
+        <div class="border border-gray-200 p-4 rounded-xl bg-gray-50">
+          <h2 class="section-title">Profile Picture</h2>
+          <div class="avatar-row">
+            <img
+              :src="user.profilePictureUrl"
+              alt="Profile Avatar"
+              class="avatar-img"
+              @error="user.profilePictureUrl = DEFAULT_AVATAR"
+            />
+
+            <div class="avatar-inputs">
+              <label class="label-sm">Change Avatar (Max 2MB)</label>
+              <input
+                type="file"
+                @change="handleFileUpload"
+                accept="image/png, image/jpeg, image/gif"
+                :disabled="isSubmitting"
+                class="file-input"
+              />
+              <p v-if="profileImageFile" class="file-hint">
+                File selected: {{ profileImageFile.name }}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Account Info -->
+        <div
+          class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4 border border-indigo-200 p-4 rounded-xl bg-indigo-50/60"
+        >
+          <div class="md:col-span-2 header-row">
+            <h2 class="section-title text-indigo-700">Account Information</h2>
+            <button
+              type="button"
+              @click="toggleEditDetails"
+              :disabled="isSubmitting"
+              class="pill-btn"
+              :class="
+                isEditingDetails
+                  ? 'pill-btn-danger'
+                  : 'pill-btn-primary'
+              "
+            >
+              {{ isEditingDetails ? 'Cancel Edit' : 'Edit Details' }}
+            </button>
+          </div>
+
+          <div>
+            <label for="name" class="label-sm">Full Name</label>
+            <input
+              id="name"
+              type="text"
+              v-model="user.name"
+              required
+              :disabled="isSubmitting || !isEditingDetails"
+              class="text-input"
+              :class="{
+                'input-disabled': !isEditingDetails,
+              }"
+            />
+          </div>
+
+          <div>
+            <label for="email" class="label-sm">Email Address (Login)</label>
+            <input
+              id="email"
+              type="email"
+              v-model="user.email"
+              required
+              :disabled="isSubmitting || !isEditingDetails"
+              class="text-input"
+              :class="{
+                'input-disabled': !isEditingDetails,
+              }"
+            />
+          </div>
+
+          <div class="md:col-span-2 role-text">
+            User Role:
+            <span class="role-badge">{{ user.role }}</span>
+          </div>
+        </div>
+
+        <!-- Change Password -->
+        <div
+          class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4 border border-yellow-300 p-4 rounded-xl bg-yellow-50/70"
+        >
+          <div class="md:col-span-2">
+            <h2 class="section-title text-yellow-700">Change Password</h2>
+            <p class="help-text">
+              Leave fields blank if you do not wish to change your password.
+            </p>
+          </div>
+
+          <div>
+            <label for="newPassword" class="label-sm">New Password</label>
+            <input
+              id="newPassword"
+              type="password"
+              v-model="user.newPassword"
+              :disabled="isSubmitting"
+              class="text-input"
+            />
+          </div>
+
+          <div>
+            <label for="confirmPassword" class="label-sm"
+              >Confirm Password</label
+            >
+            <input
+              id="confirmPassword"
+              type="password"
+              v-model="user.newPasswordConfirmation"
+              :disabled="isSubmitting"
+              class="text-input"
+            />
+          </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="actions-row">
+          <button
+            type="button"
+            @click="logout"
+            class="logout-btn"
+          >
+            Logout
+          </button>
+          <button
+            type="submit"
+            :disabled="isSubmitting"
+            class="save-btn"
+            :class="{ 'btn-disabled': isSubmitting }"
+          >
+            {{ isSubmitting ? 'Saving Profile...' : 'Update Profile' }}
+          </button>
+        </div>
+      </form>
     </div>
+  </div>
 </template>
 
 <style scoped>
 .user-profile-container {
-    min-height: 100vh;
-    padding: 40px 20px;
-    background: #f8f9fa; 
+  min-height: 100vh;
+  padding: 0 0 40px;
+  background: #eaf9e7;
+  display: flex;
+  flex-direction: column;
+  position: relative;
 }
 
+.user-profile-container::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: radial-gradient(circle at top left, #9fd49b 0, #eaf9e7 55%);
+  z-index: -1;
+}
+
+/* Center card under navbar */
 .profile-content {
-    max-width: 600px;
-    margin: 0 auto;
+  max-width: 720px;
+  margin: 40px auto 0;
+  background: #ffffff;
+  border-radius: 24px;
+  padding: 32px 26px 28px;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.18);
+  border: 4px solid #78ae63;
+}
+
+/* Title bar */
+.profile-content h1 {
+  text-align: center;
+  background: #78ae63;
+  color: #0e5821;
+  border-radius: 999px;
+  padding: 10px 18px;
+  font-size: 1.4rem;
+  margin-bottom: 18px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+}
+
+/* Generic section title */
+.section-title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+/* Avatar section */
+.avatar-row {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+@media (min-width: 640px) {
+  .avatar-row {
+    flex-direction: row;
+    align-items: center;
+  }
+}
+
+.avatar-img {
+  width: 96px;
+  height: 96px;
+  border-radius: 999px;
+  object-fit: cover;
+  border: 4px solid #4f46e5;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.25);
+}
+
+.avatar-inputs {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* Inputs */
+.label-sm {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #374151;
+}
+
+.text-input {
+  margin-top: 4px;
+  width: 100%;
+  padding: 9px 11px;
+  border-radius: 10px;
+  border: 1px solid #d1d5db;
+  font-size: 0.9rem;
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s, background-color 0.15s;
+}
+
+.text-input:focus {
+  border-color: #4f46e5;
+  box-shadow: 0 0 0 1px rgba(79, 70, 229, 0.3);
+}
+
+.input-disabled {
+  background-color: #f3f4f6;
+  cursor: not-allowed;
+}
+
+/* File input */
+.file-input {
+  width: 100%;
+  font-size: 0.85rem;
+}
+
+.file-hint {
+  font-size: 0.75rem;
+  color: #4f46e5;
+}
+
+/* Account header row */
+.header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+/* Role text */
+.role-text {
+  font-size: 0.85rem;
+  color: #4b5563;
+}
+
+.role-badge {
+  font-weight: 700;
+  color: #0f5132;
+}
+
+/* Pills */
+.pill-btn {
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.15s, transform 0.1s;
+}
+
+.pill-btn-primary {
+  background-color: #4f46e5;
+  color: #ffffff;
+}
+
+.pill-btn-primary:hover {
+  background-color: #4338ca;
+}
+
+.pill-btn-danger {
+  background-color: #dc2626;
+  color: #ffffff;
+}
+
+.pill-btn-danger:hover {
+  background-color: #b91c1c;
+}
+
+/* Help text */
+.help-text {
+  font-size: 0.8rem;
+  color: #4b5563;
+}
+
+/* Actions */
+.actions-row {
+  padding-top: 8px;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.logout-btn {
+  padding: 10px 18px;
+  border-radius: 999px;
+  border: none;
+  background-color: #dc2626;
+  color: #ffffff;
+  font-weight: 700;
+  font-size: 0.9rem;
+  box-shadow: 0 4px 10px rgba(220, 38, 38, 0.35);
+  cursor: pointer;
+  transition: background-color 0.15s, transform 0.1s;
+  min-width: 130px;
+}
+
+.logout-btn:hover {
+  background-color: #b91c1c;
+  transform: translateY(-1px);
+}
+
+.save-btn {
+  flex: 1;
+  padding: 10px 18px;
+  border-radius: 999px;
+  border: none;
+  background-color: #16a34a;
+  color: #ffffff;
+  font-weight: 800;
+  font-size: 0.95rem;
+  box-shadow: 0 5px 14px rgba(22, 163, 74, 0.45);
+  cursor: pointer;
+  transition: background-color 0.15s, transform 0.1s, box-shadow 0.15s;
+}
+
+.save-btn:hover {
+  background-color: #166534;
+  transform: translateY(-1px);
+}
+
+.btn-disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .profile-content {
+    margin-top: 24px;
+    padding: 22px 18px 20px;
+    border-width: 3px;
+  }
+
+  .profile-content h1 {
+    font-size: 1.2rem;
+    padding: 8px 14px;
+  }
+
+  .actions-row {
+    flex-direction: column-reverse;
+  }
+
+  .logout-btn,
+  .save-btn {
+    width: 100%;
+  }
 }
 </style>

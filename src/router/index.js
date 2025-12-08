@@ -15,6 +15,9 @@ import UserReportHistory from '@/pages/user/UserReportHistory.vue'
 import UserStudents from '@/pages/user/UserStudents.vue'
 import ReportDetails from '@/pages/user/ReportDetails.vue' 
 import CertificateGenerator from '@/pages/admin/CertificateGenerator.vue';
+import ViewPrescriptive from '@/pages/admin/ViewPrescriptive.vue';
+// 🔑 NEW IMPORT: Incident Trash Component (assuming filename is IncidentTrash.vue in the admin folder)
+import IncidentTrash from '@/pages/admin/IncidentTrash.vue'; 
 
 const routes = [
     // Default Redirect: '/' redirects to '/login'
@@ -80,6 +83,14 @@ const routes = [
         meta: { requiresAuth: true, isAdmin: true }
     },
 
+    // 🔑 NEW ROUTE: Incident Trash View (Soft Deleted Reports)
+    {
+        path: '/admin/incidents/trash',
+        name: 'IncidentTrash', // This name resolves the runtime error
+        component: IncidentTrash, // Component imported above
+        meta: { requiresAuth: true, isAdmin: true }
+    },
+
     // EDIT INCIDENT ROUTE (Admin)
     {
         path: '/admin/incidents/edit/:id',
@@ -107,7 +118,20 @@ const routes = [
         path: '/admin/profile',
         name: 'AdminProfile',
         component: () => import('@/pages/admin/AdminProfile.vue')
+    },
+
+    {
+        path: '/incident/view/:id', // The URL structure you want (e.g., /incident/view/38)
+        name: 'ViewPrescriptive', 
+        component: ViewPrescriptive,
+        props: true 
+    },
+    {
+    path: '/about-us',
+    name: 'AboutUs',
+    component: () => import('@/pages/AboutUs.vue'),
     }
+
 
 ]
 

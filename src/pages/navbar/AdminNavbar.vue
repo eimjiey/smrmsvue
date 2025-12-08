@@ -1,83 +1,132 @@
 <template>
-  <div class="admin-layout">
+  <div class="admin-layout" :class="{ 'admin-layout--collapsed': isSidebarCollapsed }">
     <header class="topbar">
       <div class="topbar__inner">
         <div class="topbar__brand">
+          <!-- Mobile hamburger (toggle sidebar on small screens) -->
+          <button
+            class="topbar__hamburger"
+            @click="isSidebarOpenMobile = !isSidebarOpenMobile"
+          >
+            <span :class="['bar', { 'bar--open': isSidebarOpenMobile }]"></span>
+            <span :class="['bar', { 'bar--open': isSidebarOpenMobile }]"></span>
+            <span :class="['bar', { 'bar--open': isSidebarOpenMobile }]"></span>
+          </button>
+
+          <!-- Collapse / expand icon (desktop), BEFORE logo -->
+          <button
+            class="topbar__collapse-icon"
+            @click="isSidebarCollapsed = !isSidebarCollapsed"
+            :aria-label="isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'"
+          >
+            <v-icon name="la-bars-solid" scale="1.1" />
+          </button>
+
           <img
             src="@/assets/SMRMSLOGO.png"
             alt="SMRMS Logo"
             class="topbar__logo"
           />
-          <span class="topbar__title">STUDENT MISCONDUCT REPORT MANAGEMENT</span>
+          <span class="topbar__title">
+            STUDENT MISCONDUCT REPORT MANAGEMENT
+          </span>
         </div>
 
-        <button
-          class="topbar__profile"
-          :class="{ 'topbar__profile--active': $route.name === 'AdminProfile' }"
-          @click="$router.push({ name: 'AdminProfile' })"
-        >
-          PROFILE
-        </button>
+        <div class="topbar__right">
+          <button
+            class="topbar__profile"
+            :class="{ 'topbar__profile--active': $route.name === 'AdminProfile' }"
+            @click="$router.push({ name: 'AdminProfile' })"
+          >
+            PROFILE
+          </button>
+        </div>
       </div>
     </header>
 
     <div class="admin-main">
-      <aside class="sidebar">
+      <!-- Sidebar -->
+      <aside
+        class="sidebar"
+        :class="{
+          'sidebar--collapsed': isSidebarCollapsed,
+          'sidebar--open-mobile': isSidebarOpenMobile
+        }"
+      >
         <button
           class="sidebar__item"
           :class="{ 'sidebar__item--active': $route.name === 'AdminDashboard' }"
-          @click="$router.push({ name: 'AdminDashboard' })"
+          @click="$router.push({ name: 'AdminDashboard' }); closeSidebarOnMobile()"
         >
-          DASHBOARD
+          <span class="sidebar__icon">
+            <v-icon name="md-dashboard-twotone" scale="1.1" />
+          </span>
+          <span class="sidebar__label">DASHBOARD</span>
         </button>
 
         <button
           class="sidebar__item"
           :class="{ 'sidebar__item--active': $route.name === 'AdminIncidents' }"
-          @click="$router.push({ name: 'AdminIncidents' })"
+          @click="$router.push({ name: 'AdminIncidents' }); closeSidebarOnMobile()"
         >
-          INCIDENT REPORT
+          <span class="sidebar__icon">
+            <v-icon name="md-featuredplaylist-twotone" scale="1.1" />
+          </span>
+          <span class="sidebar__label">INCIDENT REPORT</span>
         </button>
 
         <button
           class="sidebar__item"
           :class="{ 'sidebar__item--active': $route.name === 'AddStudent' }"
-          @click="$router.push({ name: 'AddStudent' })"
+          @click="$router.push({ name: 'AddStudent' }); closeSidebarOnMobile()"
         >
-          ADD STUDENT
+          <span class="sidebar__icon">
+            <v-icon name="md-addbox-twotone" scale="1.1" />
+          </span>
+          <span class="sidebar__label">ADD STUDENT</span>
         </button>
 
         <button
           class="sidebar__item"
           :class="{ 'sidebar__item--active': $route.name === 'AdminStudents' }"
-          @click="$router.push({ name: 'AdminStudents' })"
+          @click="$router.push({ name: 'AdminStudents' }); closeSidebarOnMobile()"
         >
-          STUDENT LIST
+          <span class="sidebar__icon">
+            <v-icon name="md-people-twotone" scale="1.1" />
+          </span>
+          <span class="sidebar__label">STUDENT LIST</span>
         </button>
 
         <button
           class="sidebar__item"
           :class="{ 'sidebar__item--active': $route.name === 'AboutUs' }"
-          @click="$router.push({ name: 'AboutUs' })"
+          @click="$router.push({ name: 'AboutUs' }); closeSidebarOnMobile()"
         >
-          ABOUT US
+          <span class="sidebar__icon">
+            <v-icon name="md-info-twotone" scale="1.1" />
+          </span>
+          <span class="sidebar__label">ABOUT US</span>
         </button>
 
-        <div class="sidebar__spacer"></div>
-
+        <!-- Logout directly under About Us -->
         <button
           class="sidebar__logout"
           @click="showLogoutModal = true"
         >
-          LOG OUT
+          <span class="sidebar__icon">
+            <v-icon name="md-logout-outlined" scale="1.1" />
+          </span>
+          <span class="sidebar__label">LOG OUT</span>
         </button>
       </aside>
 
+      <!-- Content -->
       <main class="content">
         <slot />
       </main>
     </div>
 
+    <!-- Logout Modal -->
     <div v-if="showLogoutModal" :style="modalOverlayStyle">
       <div :style="modalContainerStyle">
         <h3 :style="modalTitleStyle">Confirm Logout</h3>
@@ -105,24 +154,31 @@ export default {
   name: 'AdminLayout',
   setup() {
     const showLogoutModal = ref(false);
+    const isSidebarCollapsed = ref(false);
+    const isSidebarOpenMobile = ref(false);
     const router = useRouter();
 
     const confirmLogout = () => {
-      // 1. Clear session data
       localStorage.removeItem('token');
       localStorage.removeItem('user');
-      
-      // 2. Navigate to login
-      router.push('/login'); 
+      router.push('/login');
+    };
+
+    const closeSidebarOnMobile = () => {
+      if (window.innerWidth <= 900) {
+        isSidebarOpenMobile.value = false;
+      }
     };
 
     return {
       showLogoutModal,
+      isSidebarCollapsed,
+      isSidebarOpenMobile,
       confirmLogout,
+      closeSidebarOnMobile,
     };
   },
   computed: {
-    // --- Modal Styles ---
     modalOverlayStyle() {
       return {
         position: 'fixed',
@@ -152,7 +208,7 @@ export default {
       return {
         fontSize: '1.5rem',
         fontWeight: '700',
-        color: '#0b3a23', /* Dark Green */
+        color: '#0b3a23',
         marginBottom: '10px',
       };
     },
@@ -175,8 +231,8 @@ export default {
         flex: 1,
         padding: '10px 15px',
         borderRadius: '8px',
-        border: '1px solid #74a765', /* Medium Green Border */
-        backgroundColor: '#f5ffec', /* Lightest Green */
+        border: '1px solid #74a765',
+        backgroundColor: '#f5ffec',
         color: '#0b3a23',
         fontWeight: '600',
         cursor: 'pointer',
@@ -188,19 +244,18 @@ export default {
         padding: '10px 15px',
         borderRadius: '8px',
         border: 'none',
-        backgroundColor: '#dc2626', /* Red for urgency */
+        backgroundColor: '#dc2626',
         color: '#ffffff',
         fontWeight: '600',
         cursor: 'pointer',
         boxShadow: '0 2px 5px rgba(220, 38, 38, 0.3)',
       };
     },
-  }
+  },
 };
 </script>
 
 <style scoped>
-/* Base background (The requested single color) */
 .admin-layout {
   min-height: 100vh;
   background-color: #EAF9E7;
@@ -219,9 +274,7 @@ export default {
   width: 98%;
   max-width: 2300px;
   height: 56px;
-  /* Removed background color for a single-color layout */
-  background-color: transparent; 
-  border-radius: 0 0 0 0;
+  background-color: transparent;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -235,6 +288,64 @@ export default {
   gap: 12px;
 }
 
+.topbar__right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Hamburger (mobile) */
+.topbar__hamburger {
+  display: none;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 4px;
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  border: none;
+  background-color: #0b3a23;
+  cursor: pointer;
+  padding: 0;
+}
+
+.topbar__hamburger .bar {
+  width: 18px;
+  height: 2px;
+  background-color: #ffffff;
+  border-radius: 999px;
+  transition: transform 0.25s ease, opacity 0.25s ease;
+}
+.topbar__hamburger .bar:nth-child(1).bar--open {
+  transform: translateY(6px) rotate(45deg);
+}
+.topbar__hamburger .bar:nth-child(2).bar--open {
+  opacity: 0;
+}
+.topbar__hamburger .bar:nth-child(3).bar--open {
+  transform: translateY(-6px) rotate(-45deg);
+}
+
+/* Collapse / expand icon beside logo */
+.topbar__collapse-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  margin-right: 4px;
+  border-radius: 999px;
+  border: 1px solid #0b3a23;
+  background-color: #f5ffec;
+  cursor: pointer;
+  padding: 0;
+}
+
+.topbar__collapse-icon .v-icon {
+  color: #0b3a23;
+}
+
 .topbar__logo {
   height: 40px;
 }
@@ -246,11 +357,10 @@ export default {
   letter-spacing: 0.08em;
 }
 
-/* Profile button in topbar */
 .topbar__profile {
   border: none;
   border-radius: 18px;
-  padding: 8px 32px;
+  padding: 8px 24px;
   background-color: #114326;
   color: #ffffff;
   font-size: 12px;
@@ -264,7 +374,7 @@ export default {
   background-color: #0b3a23;
 }
 
-/* Main area: sidebar + content */
+/* Main area */
 .admin-main {
   flex: 1;
   display: flex;
@@ -275,34 +385,43 @@ export default {
   width: 100%;
 }
 
-/* Sidebar styles */
+/* Sidebar */
 .sidebar {
   width: 190px;
-  /* Removed background color for a single-color layout */
   background-color: transparent;
   border-radius: 8px;
   padding: 16px 12px;
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 8px;
+  transition: width 0.25s ease;
 }
 
-.sidebar__item {
+/* collapsed width */
+.sidebar--collapsed {
+  width: 64px;
+}
+
+/* Sidebar items with icon + label */
+.sidebar__item,
+.sidebar__logout {
   width: 100%;
   height: 40px;
   border-radius: 8px;
   border: none;
-  /* Keeping this light color for inactive buttons to provide contrast */
-  background-color: #f5ffec; 
+  background-color: #f5ffec;
   color: #0b3a23;
   font-size: 12px;
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  text-align: left;
-  padding: 0 16px;
+  padding: 0 12px;
   cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  box-sizing: border-box;
 }
 
 .sidebar__item--active {
@@ -310,23 +429,45 @@ export default {
   color: #ffffff;
 }
 
-.sidebar__spacer {
-  flex: 1;
-}
-
-/* Logout button at bottom */
 .sidebar__logout {
-  width: 100%;
-  height: 40px;
-  border-radius: 8px;
-  border: none;
   background-color: #0b3a23;
   color: #ffffff;
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  cursor: pointer;
+}
+
+/* icon container */
+.sidebar__icon {
+  width: 24px;
+  height: 24px;
+  min-width: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sidebar__icon .v-icon {
+  color: #0b3a23;
+}
+
+.sidebar__logout .sidebar__icon .v-icon {
+  color: #ffffff;
+}
+
+/* label text – hide when collapsed */
+.sidebar__label {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* when collapsed: center icon, hide label */
+.sidebar--collapsed .sidebar__item,
+.sidebar--collapsed .sidebar__logout {
+  justify-content: center;
+  padding: 0;
+}
+
+.sidebar--collapsed .sidebar__label {
+  display: none;
 }
 
 /* Content panel */
@@ -339,23 +480,39 @@ export default {
   width: 100%;
 }
 
-/* Basic responsiveness */
+/* Mobile */
 @media (max-width: 900px) {
+  .topbar__hamburger {
+    display: flex;
+  }
+
+  .topbar__collapse-icon {
+    display: none;
+  }
+
   .admin-main {
-    flex-direction: column;
-    align-items: center;
+    position: relative;
+    padding-top: 0;
   }
 
   .sidebar {
-    width: 100%;
-    flex-direction: row;
-    flex-wrap: wrap;
-    justify-content: center;
+    position: fixed;
+    top: 72px;
+    left: 0;
+    bottom: 0;
+    width: 220px;
+    background-color: #eaf9e7;
+    box-shadow: 2px 0 8px rgba(0, 0, 0, 0.15);
+    transform: translateX(-100%);
+    z-index: 900;
   }
 
-  .sidebar__item,
-  .sidebar__logout {
-    max-width: 45%;
+  .sidebar--open-mobile {
+    transform: translateX(0);
+  }
+
+  .sidebar--collapsed {
+    width: 220px; /* ignore collapsed state on mobile */
   }
 
   .content {

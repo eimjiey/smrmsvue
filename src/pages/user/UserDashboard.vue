@@ -1,280 +1,454 @@
 <template>
-    <div class="misconduct-home-page">
-        <header class="top-bar">
-            <div class="nav-links-wrapper">
-                
-                <router-link to="/user/dashboard" class="nav-link dashboard-text">
-                    <span class="material-icons"></span> DASHBOARD
-                </router-link>
+  <div class="page">
+    <!-- TOP GREEN AREA WITH NAVBAR + TITLE -->
+    <div class="hero">
+      <UserNavbar />
 
-                <router-link :to="{ name: 'UserReportHistory' }" class="nav-link">
-                    MY REPORTS
-                </router-link>
+      <div class="hero-inner">
+        <h1 class="hero-title">
+          STUDENT MISCONDUCT REPORT MANAGEMENT
+        </h1>
 
-            </div>
-            
-            <div class="user-controls"> <button class="logout-btn" @click="handleLogout">
-                    LOGOUT
-                </button>
-                <div class="profile-icon">
-                    <span class="material-icons"></span>
-                </div>
-            </div>
-        </header>
-
-        <div class="home-container">
-            
-            <h1 class="main-title">STUDENT MISCONDUCT REPORT MANAGEMENT</h1>
-
-            <div class="button-group">
-                <button class="report-btn primary-btn" @click="goToReport">
-                    REPORT AN INCIDENT
-                </button>
-
-                <button class="report-btn secondary-btn" @click="goToMyReports">
-                    VIEW MY REPORTS
-                </button>
-            </div>
-            
-            <div class="info-card-wrapper">
-                <div class="info-card">
-                    <div class="left-box"></div>
-                    <div class="right-content">
-                        <h2 class="info-header">INFO</h2>
-                        <p class="info-text">
-                            The Student Misconduct Report Management System helps schools record, track,
-                            and manage misconduct cases efficiently. Our goal is to promote fairness,
-                            accountability, and a safe learning environment.
-                        </p>
-                    </div>
-                </div>
-            </div>
+        <div class="hero-buttons">
+          <button class="btn btn-primary" @click="goToReport">
+            REPORT INCIDENT
+          </button>
+          <button class="btn btn-secondary" @click="goToMyReports">
+            VIEW REPORTS
+          </button>
         </div>
+      </div>
     </div>
+
+    <!-- TOTAL REPORTS CARD -->
+    <section class="totals-section">
+      <div class="total-card">
+        <div class="total-value">{{ totalReports }}</div>
+        <div class="total-label">TOTAL MISCONDUCT REPORTS FILED</div>
+      </div>
+    </section>
+
+    <!-- CHART GRID: MONTHLY (BAR) + PROGRAM -->
+    <section class="charts-section">
+      <div class="charts-row">
+        <!-- Monthly Misconduct Trends (BAR) -->
+        <section class="chart-card flex-2">
+          <h2 class="chart-title">Monthly Misconduct Trends</h2>
+          <p class="chart-subtitle">
+            Incidents reported monthly in S.Y. 2025–2026
+          </p>
+
+          <div
+            v-if="
+              !isMonthlyLoading &&
+              monthlyChartData.datasets[0].data.reduce((a, b) => a + b, 0) > 0
+            "
+            class="chart-inner"
+          >
+            <MonthlyMisconductChart :chart-data="monthlyChartData" />
+          </div>
+          <div v-else-if="!isMonthlyLoading" class="chart-empty">
+            No monthly misconduct data available.
+          </div>
+          <div v-else class="chart-empty">
+            Loading monthly data...
+          </div>
+        </section>
+
+        <!-- Misconduct Per Program -->
+        <section class="chart-card flex-1">
+          <h2 class="chart-title">Misconduct Per Program</h2>
+          <p class="chart-subtitle">
+            Distribution of misconduct incidents by program.
+          </p>
+
+          <div
+            v-if="!isProgramLoading && hasProgramData"
+            class="chart-inner"
+          >
+            <ProgramBarChart :chart-data="misconductPerProgramChartData" />
+          </div>
+          <div v-else-if="!isProgramLoading" class="chart-empty">
+            No misconduct data available per program.
+          </div>
+          <div v-else class="chart-empty">
+            Loading program/course data...
+          </div>
+        </section>
+      </div>
+    </section>
+
+    <!-- LOWER LIGHT AREA INFO -->
+    <main class="content">
+      <section class="info-card">
+        <div class="info-left"></div>
+        <div class="info-right">
+          <h2 class="info-title">INFO</h2>
+          <p class="info-text">
+            The Student Misconduct Report Management System helps schools
+            record, track, and manage misconduct cases efficiently. Our goal
+            is to promote fairness, accountability, and a safe learning
+            environment.
+          </p>
+        </div>
+      </section>
+    </main>
+  </div>
 </template>
 
 <script>
+import UserNavbar from '@/components/UserNavbar.vue';
+import ProgramBarChart from '@/components/ProgramBarChart.vue';
+import MonthlyMisconductChart from '@/components/MonthlyMisconductChart.vue';
+import api from '@/services/api';
+
 export default {
-    name: "MisconductHomePage",
-
-    data() {
-        return {};
+  name: 'UserDashboard',
+  components: { UserNavbar, ProgramBarChart, MonthlyMisconductChart },
+  data() {
+    return {
+      stats: {
+        reports: 0,
+      },
+      isStatsLoading: false,
+      isMonthlyLoading: false,
+      isProgramLoading: false,
+      monthlyMisconduct: [],
+      misconductPerProgram: {},
+    };
+  },
+  computed: {
+    totalReports() {
+      return Number(this.stats.reports || 0);
     },
+    hasProgramData() {
+      return Object.values(this.misconductPerProgram || {}).some(
+        (v) => Number(v) > 0,
+      );
+    },
+    // BAR GRAPH CONFIG FOR MONTHLY MISCONDUCT
+    monthlyChartData() {
+      const labels = this.monthlyMisconduct.map((i) => i.month_label);
+      const data = this.monthlyMisconduct.map((i) => i.count);
 
-    methods: {
-        goToReport() {
-            // Navigates to the report filing form
-            this.$router.push('/file-incident-report'); 
-        },
-        goToMyReports() {
-            // Navigates to the UserReportHistory.vue component
-            this.$router.push({ name: 'UserReportHistory' });
-        },
-        handleLogout() {
-            // --- ACTUAL LOGOUT LOGIC GOES HERE ---
-            // In a real application, this would involve:
-            // 1. Calling an API to invalidate the session/token.
-            // 2. Clearing local state (e.g., Vuex/Pinia store).
-            // 3. Redirecting the user to the login page.
-            
-            alert("Logging out...");
-            // Simulate redirect to login page (assuming '/login' is the route name/path)
-            this.$router.push('/login'); 
-        }
-    }
+      return {
+        labels,
+        datasets: [
+          {
+            label: 'Number of Incidents',
+            data,
+            backgroundColor: 'rgba(77, 124, 82, 0.8)',
+            borderColor: '#1d3e21',
+            borderWidth: 1,
+          },
+        ],
+      };
+    },
+    misconductPerProgramChartData() {
+      const labels = Object.keys(this.misconductPerProgram || {});
+      const data = Object.values(this.misconductPerProgram || {});
+      const chartColors = [
+        'rgba(46, 134, 193, 0.8)',
+        'rgba(241, 196, 15, 0.8)',
+        'rgba(39, 174, 96, 0.8)',
+        'rgba(231, 76, 60, 0.8)',
+        'rgba(155, 89, 182, 0.8)',
+        'rgba(52, 73, 94, 0.8)',
+      ];
+
+      return {
+        labels,
+        datasets: [
+          {
+            label: 'Number of Misconduct Incidents',
+            data,
+            backgroundColor: data.map(
+              (_, i) => chartColors[i % chartColors.length],
+            ),
+            borderColor: '#1d3e21',
+            borderWidth: 1,
+          },
+        ],
+      };
+    },
+  },
+  mounted() {
+    this.fetchStats();
+    this.fetchMonthlyMisconduct();
+    this.fetchMisconductPerProgram();
+  },
+  methods: {
+    goToReport() {
+      this.$router.push('/file-incident-report');
+    },
+    goToMyReports() {
+      this.$router.push({ name: 'UserReportHistory' });
+    },
+    async fetchStats() {
+      this.isStatsLoading = true;
+      try {
+        const { data } = await api.get('/admin/stats');
+        this.stats = data || this.stats;
+      } catch (error) {
+        console.error('Failed to fetch stats for user dashboard:', error);
+      } finally {
+        this.isStatsLoading = false;
+      }
+    },
+    async fetchMonthlyMisconduct() {
+      this.isMonthlyLoading = true;
+      try {
+        const { data } = await api.get('/stats/monthly-misconduct');
+        this.monthlyMisconduct = Array.isArray(data) ? data : [];
+      } catch (error) {
+        console.error('Failed to fetch monthly misconduct:', error);
+        this.monthlyMisconduct = [];
+      } finally {
+        this.isMonthlyLoading = false;
+      }
+    },
+    async fetchMisconductPerProgram() {
+      this.isProgramLoading = true;
+      try {
+        const { data } = await api.get('/stats/misconduct-per-program');
+        this.misconductPerProgram = data || {};
+      } catch (error) {
+        console.error('Failed to fetch misconduct per program:', error);
+        this.misconductPerProgram = {};
+      } finally {
+        this.isProgramLoading = false;
+      }
+    },
+  },
 };
 </script>
 
 <style scoped>
-/* --- Page and Background --- */
-.misconduct-home-page {
-    width: 100%;
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    background: #EAF9E7; 
-    font-family: Arial, sans-serif;
+.page {
+  min-height: 100vh;
+  background-color: #eaf9e7;
+  display: flex;
+  flex-direction: column;
 }
 
-.home-container {
-    max-width: 900px;
-    width: 90%;
-    margin: 0 auto;
-    padding: 50px 0;
-    flex-grow: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    text-align: center;
+/* Hero section */
+.hero {
+  background-color: #78ae63;
+  border-bottom-left-radius: 48px;
+  border-bottom-right-radius: 48px;
+  padding-bottom: 100px;
 }
 
-/* --- Top Bar Styling --- */
-.top-bar {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 15px 40px;
-    background-color: #549A6C; /* Header/Primary Green */
-    color: white;
-    font-weight: bold;
+.hero-inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 40px 24px 0;
+  text-align: center;
 }
 
-.nav-links-wrapper {
-    display: flex;
-    align-items: center;
-    gap: 30px; 
+.hero-title {
+  color: #0e5821;
+  font-size: 2.2rem;
+  letter-spacing: 2px;
+  margin: 40px 0 70px;
 }
 
-.nav-link {
-    color: white;
-    text-decoration: none;
-    font-size: 1.1rem;
-    letter-spacing: 1px;
-    padding: 5px 0;
-    transition: color 0.2s;
+.hero-buttons {
+  display: flex;
+  justify-content: center;
+  gap: 60px;
 }
 
-.nav-link:hover {
-    color: #f0f0f0; 
+.btn {
+  padding: 18px 70px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  border: none;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.25);
 }
 
-.dashboard-text {
-    display: flex;
-    align-items: center;
+.btn-primary,
+.btn-secondary {
+  background-color: #063d1e;
+  color: #ffffff;
 }
 
-/* --- User Controls (Logout and Profile) --- */
-.user-controls {
-    display: flex;
-    align-items: center;
-    gap: 15px; 
+/* Total reports card */
+.totals-section {
+  max-width: 1100px;
+  margin: -40px auto 0 auto;
+  padding: 0 24px 10px;
 }
 
-.logout-btn {
-    background: none;
-    border: 1px solid white;
-    color: white;
-    padding: 8px 15px;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 0.9rem;
-    font-weight: bold;
-    letter-spacing: 0.5px;
-    transition: background-color 0.2s, color 0.2s;
+.total-card {
+  background: #1d3e21;
+  color: #f8fff8;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  text-align: center;
 }
 
-.logout-btn:hover {
-    background-color: white;
-    color: #549A6C; 
+.total-value {
+  font-size: 3rem;
+  font-weight: 900;
+  line-height: 1;
 }
 
-.profile-icon {
-    background-color: white; 
-    border-radius: 50px;
-    width: 40px;
-    height: 40px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    box-shadow: 0 0 0 5px rgba(220, 255, 220, 0.1); 
+.total-label {
+  margin-top: 8px;
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
-/* --- Main Title --- */
-.main-title {
-    color: #1D7A31; /* Darker Green text */
-    margin: 150px 0 50px; 
-    font-size: 2.5rem;
-    letter-spacing: 2px;
-    text-shadow: none; 
+/* Charts layout */
+.charts-section {
+  max-width: 1100px;
+  margin: 0 auto 0 auto;
+  padding: 0 24px 20px;
 }
 
-/* --- Button Group Container --- */
-.button-group {
-    display: flex;
-    gap: 20px; 
-    margin-bottom: 80px; 
+.charts-row {
+  display: flex;
+  gap: 20px;
+  width: 100%;
 }
 
-/* --- Button Styling (Report/MyReports) --- */
-.report-btn {
-    padding: 15px 40px;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 1rem;
-    font-weight: bold;
-    transition: background-color 0.3s ease;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    box-shadow: inset 0 0 8px rgba(0, 0, 0, 0.5); 
-    width: auto; 
-    min-width: 200px; 
+.chart-card {
+  background-color: #ffffff;
+  border-radius: 10px;
+  padding: 20px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
-/* Primary (Report Incident) styling */
-.primary-btn {
-    border: none;
-    background-color: #323A36; /* Dark Grey/Black */
-    color: white;
+.flex-2 {
+  flex: 4;
 }
 
-.primary-btn:hover {
-    background-color: #1a1e1b;
+.flex-1 {
+  flex: 3.5;
 }
 
-/* Secondary (My Reports) styling */
-.secondary-btn {
-    border: 2px solid #323A36;
-    background-color: transparent;
-    color: #323A36;
-    box-shadow: none; 
+.chart-title {
+  color: #1d3e21;
+  margin: 0 0 6px;
+  font-weight: 700;
+  text-align: center;
 }
 
-.secondary-btn:hover {
-    background-color: #d8e2d8; /* Slight hover effect on background */
-    color: #1a1e1b;
+.chart-subtitle {
+  margin: 0 0 14px;
+  font-size: 0.9rem;
+  color: #4caf50;
+  text-align: center;
 }
 
-/* --- Info Card --- */
+.chart-inner {
+  height: 280px;
+  width: 100%;
+}
 
-.info-card-wrapper {
-    width: 100%;
-    max-width: 700px; 
-    margin-top: auto; 
+.chart-empty {
+  text-align: center;
+  padding: 20px;
+  font-size: 0.9rem;
+}
+
+/* Lower info section */
+.content {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  padding: 20px 20px 90px;
 }
 
 .info-card {
-    background-color: #549A6C; 
-    border-radius: 8px;
-    display: flex;
-    overflow: hidden;
-    padding: 25px;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3); 
+  width: 100%;
+  max-width: 720px;
+  background-color: #549a6c;
+  border-radius: 12px;
+  display: flex;
+  padding: 28px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
 }
 
-.left-box {
-    background-color: rgba(255, 255, 255, 0.2); 
-    flex-basis: 35%;
-    margin-right: 25px;
-    border-radius: 6px;
+.info-left {
+  background-color: rgba(255, 255, 255, 0.2);
+  flex-basis: 35%;
+  border-radius: 8px;
+  margin-right: 24px;
 }
 
-.right-content {
-    flex-basis: 65%;
-    text-align: left;
+.info-right {
+  flex-basis: 65%;
+  text-align: left;
 }
 
-.info-header {
-    color: white;
-    font-size: 1.8rem;
-    margin-bottom: 10px;
-    font-weight: bold;
-    text-transform: uppercase;
+.info-title {
+  color: #ffffff;
+  font-size: 1.8rem;
+  margin: 0 0 12px;
+  font-weight: bold;
+  text-transform: uppercase;
 }
 
 .info-text {
-    color: #f0f0f0; 
-    font-size: 0.95rem;
-    line-height: 1.5;
-    margin: 0;
+  color: #f0f0f0;
+  font-size: 0.95rem;
+  line-height: 1.5;
+  margin: 0;
+}
+
+/* Mobile tweaks */
+@media (max-width: 768px) {
+  .hero-inner {
+    padding: 24px 16px 0;
+  }
+
+  .hero-title {
+    font-size: 1.7rem;
+    margin: 30px 0 40px;
+  }
+
+  .hero-buttons {
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .btn {
+    width: 100%;
+  }
+
+  .totals-section {
+    margin-top: -30px;
+    padding: 0 16px 10px;
+  }
+
+  .charts-section {
+    padding: 0 16px 16px;
+  }
+
+  .charts-row {
+    flex-direction: column;
+  }
+
+  .content {
+    padding: 30px 16px 70px;
+  }
+
+  .info-card {
+    flex-direction: column;
+  }
+
+  .info-left {
+    margin-right: 0;
+    margin-bottom: 16px;
+    min-height: 120px;
+  }
 }
 </style>

@@ -1,384 +1,404 @@
 <template>
-  <div :style="userPageContainerStyle">
-    
-    <header :style="headerBarStyle">
-        <div :style="headerTitleStyle">
-            <span :style="headerIconStyle">📝</span> MY FILED INCIDENT REPORTS
-        </div>
-        <div :style="profileIconStyle">
-            <span :style="profileIconInnerStyle">👤</span>
-        </div>
-    </header>
-
-    <div :style="listWrapperStyle">
-      <h1 :style="mainTitleStyle">My Incident Report History</h1>
-
-      <p v-if="isLoading" :style="loadingStyle">Loading your reports... Please wait.</p>
-      <p v-else-if="errorMessage" :style="errorMessageStyle">Error fetching your reports: {{ errorMessage }}</p>
-      <p v-else-if="reports.length === 0" :style="noDataStyle">You haven't filed any incident reports yet.</p>
-
-      <div v-else :style="tableContainerStyle">
-        <table :style="tableStyle">
-          <thead :style="tableHeadStyle">
-            <tr>
-              <th :style="tableHeaderCellStyle">Report ID</th>
-              <th :style="tableHeaderCellStyle">Student Reported</th>
-              <th :style="tableHeaderCellStyle">Misconduct Type</th>
-              <th :style="tableHeaderCellStyle">Date of Incident</th>
-              <th :style="tableHeaderCellStyle">Status</th>
-              <th :style="tableHeaderCellStyle">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="report in reports" :key="report.id" :style="tableRowStyle">
-                <td :style="tableCellStyle">{{ report.id }}</td> 
-              <td :style="tableCellStyle">{{ report.student_name }}</td>
-              <td :style="tableCellStyle">{{ report.misconduct_type }}</td>
-              <td :style="tableCellStyle">{{ formatDateTime(report.incident_date) }}</td>
-              <td :style="statusStyle(report.status)">
-                {{ report.status }}
-              </td>
-              <td :style="actionCellStyle">
-                <button :style="viewButtonStyle" @click="viewReportDetails(report.id)">Review</button>
-                
-                <button 
-                    :style="deleteButtonStyle" 
-                    @click="confirmDeleteReport(report.id)">
-                    Delete
-                </button>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+  <div class="history-page">
+    <div class="hero">
+      <UserNavbar />
+      <h1 class="hero-title">
+        STUDENT MISCONDUCT REPORT MANAGEMENT
+      </h1>
     </div>
 
+    <div class="inner-wrapper">
+      <div class="inner-panel">
+        <header class="history-header-bar">
+          <div class="history-title-left">
+            <span class="header-icon">📝</span>
+            MY FILED INCIDENT REPORTS
+          </div>
+          <div class="history-profile-icon">
+            <span class="history-profile-inner">👤</span>
+          </div>
+        </header>
+
+        <div class="list-wrapper">
+          <h2 class="main-title">My Incident Report History</h2>
+
+          <p v-if="isLoading" class="msg msg-loading">
+            Loading your reports... Please wait.
+          </p>
+          <p v-else-if="errorMessage" class="msg msg-error">
+            Error fetching your reports: {{ errorMessage }}
+          </p>
+          <p v-else-if="reports.length === 0" class="msg msg-empty">
+            You haven't filed any incident reports yet.
+          </p>
+
+          <div v-else class="table-container">
+            <table class="history-table">
+              <thead>
+                <tr>
+                  <th>Report ID</th>
+                  <th>Student Reported</th>
+                  <th>Misconduct Type</th>
+                  <th>Date of Incident</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr
+                  v-for="report in reports"
+                  :key="report.id"
+                >
+                  <td>{{ report.id }}</td>
+                  <td>{{ report.student_name }}</td>
+                  <td>{{ report.misconduct_type }}</td>
+                  <td>{{ formatDateTime(report.incident_date) }}</td>
+                  <td>
+                    <span :class="['status-pill', statusClass(report.status)]">
+                      {{ report.status }}
+                    </span>
+                  </td>
+                  <td class="actions-cell">
+                    <button
+                      class="btn btn-view"
+                      @click="viewReportDetails(report.id)"
+                    >
+                      Review
+                    </button>
+                    <button
+                      class="btn btn-delete"
+                      @click="confirmDeleteReport(report.id)"
+                    >
+                      Delete
+                    </button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+
+            <p v-if="deleteMessage" class="msg msg-error" style="margin-top: 10px">
+              {{ deleteMessage }}
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script>
-import { ref, onMounted, computed } from 'vue';
+import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
-import api from '@/services/api'; 
-// NOTE: You will likely need to import your store (e.g., Pinia/Vuex) 
-// to get the logged-in user's information. For this example, I'll use 
-// a simple function call that you must replace with your actual state management logic.
-
-// REPLACE THIS WITH YOUR ACTUAL LOGIC to get the user data
-const getAuthUser = async () => {
-    try {
-        // Assuming you have a /me or /user endpoint to fetch current user data
-        const response = await api.get('/me'); 
-        return response.data; // Should contain { id: 1, role: 'user', ... }
-    } catch (e) {
-        console.error("Failed to fetch authenticated user:", e);
-        return null;
-    }
-}
+import api from '@/services/api';
+import UserNavbar from '@/components/UserNavbar.vue';
 
 export default {
-    name: 'UserReportHistory',
-    setup() {
-        const router = useRouter();
-        const reports = ref([]);
-        const isLoading = ref(true);
-        const errorMessage = ref(null);
-        
-        // --- Core Functions ---
+  name: 'UserReportHistory',
+  components: { UserNavbar },
+  setup() {
+    const router = useRouter();
+    const reports = ref([]);
+    const isLoading = ref(true);
+    const errorMessage = ref(null);
+    const deleteMessage = ref(null);
 
-        const fetchReports = async () => {
-            isLoading.value = true;
-            errorMessage.value = null;
-            try {
-                const user = await getAuthUser();
-                
-                if (!user) {
-                    errorMessage.value = "User not authenticated or profile not loaded.";
-                    return;
-                }
-
-                // Assuming this endpoint only returns reports that are NOT soft-deleted
-                const response = await api.get('/incidents'); 
-                
-                if (response.status === 200) {
-                    const dataArray = Array.isArray(response.data) ? response.data : [];
-
-                    reports.value = dataArray.map(report => ({
-                        id: report.id,
-                        student_name: report.full_name, 
-                        misconduct_type: report.specific_offense, 
-                        incident_date: report.date_of_incident, 
-                        status: report.status || 'Pending',
-                    }));
-                }
-            } catch (error) {
-                console.error("Error fetching user reports:", error);
-                if (error.response && (error.response.status === 401 || error.response.status === 403)) {
-                    errorMessage.value = "Access Denied. Please log in again.";
-                } else {
-                    errorMessage.value = error.message; 
-                }
-            } finally {
-                isLoading.value = false;
-            }
-        };
-
-        const viewReportDetails = (reportId) => {
-            router.push({ name: 'ReportDetails', params: { id: reportId } });
-        };
-        
-        const formatDateTime = (dateString) => {
-            if (!dateString) return 'N/A';
-            return new Date(dateString).toLocaleDateString('en-US');
-        }
-
-        // -----------------------------------------------------------
-        // 🎯 DELETE FUNCTIONALITY
-        // -----------------------------------------------------------
-
-        const confirmDeleteReport = (reportId) => {
-            // Basic confirmation for soft-delete
-            if (window.confirm(`Are you sure you want to delete report #${reportId}? You may not be able to recover it.`)) {
-                deleteReport(reportId);
-            }
-        };
-
-        const deleteReport = async (reportId) => {
-            try {
-                // Laravel Soft Delete: Sends a DELETE request to the resource endpoint.
-                // The API should handle this by setting the 'deleted_at' timestamp.
-                const response = await api.delete(`/incidents/${reportId}`);
-
-                if (response.status === 200 || response.status === 204) {
-                    // Remove the report locally from the array without a full page reload
-                    reports.value = reports.value.filter(report => report.id !== reportId);
-                    
-                    // Optional: Show a success message (e.g., using a separate toast component)
-                    alert(`Report #${reportId} successfully deleted.`); 
-                }
-            } catch (error) {
-                console.error(`Error soft-deleting report #${reportId}:`, error);
-                errorMessage.value = `Failed to delete report #${reportId}. Ensure you have permission.`;
-            }
-        };
-
-        // -----------------------------------------------------------
-        
-        onMounted(fetchReports);
-        
-        // --- STYLES (Inline Styles) ---
-        const themeColors = {
-            darkGreen: '#1d3e21',
-            mediumGreen: '#4CAF50',
-            lightGreen: '#e6f0e7',
-            paleBackground: '#EAF9E7',
-            white: '#fff',
-        };
-
-        const userPageContainerStyle = computed(() => ({
-            fontFamily: 'Arial, sans-serif',
-            minHeight: '100vh',
-            backgroundColor: themeColors.paleBackground, 
-            paddingTop: '60px', 
-        }));
-        
-        const headerBarStyle = computed(() => ({
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            width: '100%',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            padding: '10px 30px',
-            backgroundColor: themeColors.darkGreen,
-            color: themeColors.white,
-            fontWeight: 'bold',
-            zIndex: 10,
-        }));
-
-        const headerTitleStyle = computed(() => ({
-            display: 'flex',
-            alignItems: 'center',
-            fontSize: '1.2rem',
-            gap: '10px',
-        }));
-
-        const headerIconStyle = computed(() => ({
-            fontSize: '1.5rem',
-        }));
-
-        const profileIconStyle = computed(() => ({
-            padding: '5px',
-            background: themeColors.white, 
-            borderRadius: '50%',
-        }));
-        
-        const profileIconInnerStyle = computed(() => ({
-            fontSize: '1.2rem',
-            color: themeColors.darkGreen, 
-        }));
-
-        const listWrapperStyle = computed(() => ({
-            maxWidth: '1100px',
-            margin: '30px auto',
-            padding: '30px',
-            backgroundColor: themeColors.white,
-            borderRadius: '10px',
-            boxShadow: '0 4px 10px rgba(0, 0, 0, 0.1)',
-        }));
-        
-        const mainTitleStyle = computed(() => ({
-            textAlign: 'center',
-            fontSize: '1.5rem',
-            fontWeight: 'bold',
-            color: themeColors.darkGreen, 
-            marginBottom: '30px',
-            paddingBottom: '10px',
-            borderBottom: `2px solid ${themeColors.mediumGreen}`,
-        }));
-
-        const tableContainerStyle = computed(() => ({
-            overflowX: 'auto',
-        }));
-        
-        const tableStyle = computed(() => ({
-            width: '100%',
-            borderCollapse: 'separate',
-            borderSpacing: '0 5px',
-            textAlign: 'left',
-        }));
-
-        const tableHeadStyle = computed(() => ({
-            backgroundColor: themeColors.darkGreen,
-            color: themeColors.white,
-            borderRadius: '5px',
-        }));
-        
-        const tableHeaderCellStyle = computed(() => ({
-            padding: '12px 15px',
-            textTransform: 'uppercase',
-            fontSize: '0.85rem',
-            fontWeight: 'bold',
-        }));
-        
-        const tableRowStyle = computed(() => ({
-            backgroundColor: '#f8fff8',
-            border: '1px solid #eee',
-            borderRadius: '5px',
-            transition: 'background-color 0.2s',
-            // Removed cursor: 'pointer' to indicate the row click handler is gone
-        }));
-        
-        const tableCellStyle = computed(() => ({
-            padding: '10px 15px',
-            fontSize: '0.95rem',
-            color: '#333',
-        }));
-
-        const actionCellStyle = computed(() => ({
-            ...tableCellStyle.value,
-            display: 'flex',
-            gap: '10px', // Space between buttons
-            alignItems: 'center',
-        }));
-
-
-        const statusStyle = (status) => {
-            let color = '#333';
-            let backgroundColor = '#f0f0f0';
-
-            if (status === 'Resolved') {
-                backgroundColor = '#d4edda';
-                color = '#155724';
-            } else if (status === 'Under Review') {
-                backgroundColor = '#fff3cd';
-                color = '#856404';
-            } else if (status === 'Pending') {
-                backgroundColor = '#d1ecf1';
-                color = '#0c5460';
-            } else if (status === 'Closed') {
-                 backgroundColor = '#e2e6ea';
-                 color = '#495057';
-            }
-
-            return {
-                padding: '5px 10px',
-                borderRadius: '5px',
-                textAlign: 'center',
-                fontWeight: 'bold',
-                fontSize: '0.9rem',
-                color: color,
-                backgroundColor: backgroundColor,
-                display: 'inline-block', 
-                minWidth: '100px',
-            };
-        };
-        
-        const viewButtonStyle = computed(() => ({
-            padding: '5px 10px',
-            backgroundColor: themeColors.mediumGreen,
-            color: themeColors.white,
-            border: 'none',
-            borderRadius: '3px',
-            cursor: 'pointer',
-            fontSize: '0.8rem',
-            transition: 'background-color 0.2s',
-        }));
-        
-        // 🎯 NEW DELETE BUTTON STYLE
-        const deleteButtonStyle = computed(() => ({
-            padding: '5px 10px',
-            backgroundColor: '#dc3545', // Red color for delete
-            color: themeColors.white,
-            border: 'none',
-            borderRadius: '3px',
-            cursor: 'pointer',
-            fontSize: '0.8rem',
-            transition: 'background-color 0.2s',
-        }));
-
-        const loadingStyle = computed(() => ({ padding: '15px', backgroundColor: '#fffbe6', border: '1px solid #ffcc00', borderRadius: '5px', color: '#a07e00', fontWeight: 'bold', }));
-        const errorMessageStyle = computed(() => ({ padding: '15px', backgroundColor: '#f8d7da', border: '1px solid #f5c6cb', borderRadius: '5px', color: '#721c24', fontWeight: 'bold', }));
-        const noDataStyle = computed(() => ({ padding: '15px', backgroundColor: '#e9ecef', border: '1px solid #ccc', borderRadius: '5px', color: '#6c757d', fontWeight: 'bold', }));
-
-
-        return {
-            reports,
-            isLoading,
-            errorMessage,
-            viewReportDetails,
-            confirmDeleteReport, // 🎯 Export new function
-            formatDateTime,
-            statusStyle,
+    const fetchReports = async () => {
+      isLoading.value = true;
+      errorMessage.value = null;
+      deleteMessage.value = null;
+      try {
+        // Calls GET /incidents, which the backend filters by filer_id for non-admin users.
+        const response = await api.get('/incidents');
+        if (response.status === 200) {
+          const raw = response.data?.data || [];
+          reports.value = raw.map(incident => ({
+            id: incident.id,
+            // These fields are expected from the IncidentController::index mapping
+            student_name: incident.full_name,
+            misconduct_type: incident.specific_offense,
             
-            // Styles
-            userPageContainerStyle,
-            headerBarStyle,
-            headerTitleStyle,
-            headerIconStyle,
-            profileIconStyle,
-            profileIconInnerStyle,
-            listWrapperStyle,
-            mainTitleStyle,
-            tableContainerStyle,
-            tableStyle,
-            tableHeadStyle,
-            tableHeaderCellStyle,
-            tableRowStyle,
-            tableCellStyle,
-            actionCellStyle, // 🎯 New action cell style
-            loadingStyle,
-            errorMessageStyle,
-            noDataStyle,
-            viewButtonStyle,
-            deleteButtonStyle, // 🎯 Export new style
-        };
-    },
+            incident_date: incident.date_of_incident,
+            status: incident.status || 'Pending',
+          }));
+        }
+      } catch (error) {
+        console.error('Error fetching user reports:', error);
+        if (
+          error.response &&
+          (error.response.status === 401 || error.response.status === 403)
+        ) {
+          errorMessage.value = 'Access Denied. Please log in again.';
+        } else {
+          errorMessage.value = error.response?.data?.message || error.message || 'Failed to load reports.';
+        }
+      } finally {
+        isLoading.value = false;
+      }
+    };
+
+    const viewReportDetails = reportId => {
+      // NOTE: Replace 'ReportDetails' with your actual route name for viewing incident details
+      router.push({ name: 'ReportDetails', params: { id: reportId } });
+    };
+
+    const formatDateTime = dateString => {
+      if (!dateString) return 'N/A';
+      return new Date(dateString).toLocaleDateString('en-US');
+    };
+
+    const confirmDeleteReport = reportId => {
+      deleteMessage.value = null;
+      if (
+        window.confirm(
+          `Move report #${reportId} to trash? Only you (or an admin) can restore or permanently delete it.`
+        )
+      ) {
+        deleteReport(reportId);
+      }
+    };
+
+    const deleteReport = async reportId => {
+      try {
+        // Calls DELETE /incidents/{id} -> IncidentController@destroy (soft delete)
+        const response = await api.delete(`/incidents/${reportId}`);
+        if (response.status === 200 || response.status === 204) {
+          reports.value = reports.value.filter(report => report.id !== reportId);
+          deleteMessage.value = null;
+          alert(`Report #${reportId} successfully moved to trash.`);
+        }
+      } catch (error) {
+        console.error(`Error soft-deleting report #${reportId}:`, error);
+        if (
+          error.response &&
+          (error.response.status === 401 || error.response.status === 403)
+        ) {
+          // Use backend message (e.g., "Unauthorized to delete this incident...")
+          deleteMessage.value =
+            error.response.data?.message ||
+            'You are not allowed to delete this report.';
+        } else {
+          deleteMessage.value = `Failed to delete report #${reportId}. Please try again later.`;
+        }
+      }
+    };
+
+    const statusClass = status => {
+      if (status === 'Resolved') return 'status-resolved';
+      if (status === 'Investigation' || status === 'Under Review')
+        return 'status-review';
+      if (status === 'Closed') return 'status-closed';
+      return 'status-pending';
+    };
+
+    onMounted(fetchReports);
+
+    return {
+      reports,
+      isLoading,
+      errorMessage,
+      deleteMessage,
+      viewReportDetails,
+      confirmDeleteReport,
+      formatDateTime,
+      statusClass,
+    };
+  },
 };
 </script>
 
 <style scoped>
-/* Scoped styles are handled by the inline style bindings in this case. */
-/* You might want to add a hover state for rows/buttons here if possible */
+/* styles unchanged from your version */
+.history-page {
+  min-height: 100vh;
+  background-color: #cfe9c1;
+}
+.hero {
+  background-color: #78ae63;
+  border-bottom-left-radius: 40px;
+  border-bottom-right-radius: 40px;
+  padding-bottom: 24px;
+}
+.hero-title {
+  margin: 0;
+  padding-top: 18px;
+  text-align: center;
+  color: #0e5821;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+.inner-wrapper {
+  padding: 32px 32px 60px;
+}
+.inner-panel {
+  max-width: 1100px;
+  margin: 0 auto;
+  background-color: #78ae63;
+  border-radius: 40px;
+  padding: 28px 28px 36px;
+}
+.history-header-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 20px;
+  background-color: #549a6c;
+  color: #ffffff;
+  border-radius: 999px;
+  margin-bottom: 20px;
+}
+.history-title-left {
+  display: flex;
+  align-items: center;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+.header-icon {
+  margin-right: 8px;
+  font-size: 1.2rem;
+}
+.history-profile-icon {
+  background-color: #ffffff;
+  border-radius: 999px;
+  width: 34px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.history-profile-inner {
+  font-size: 1.1rem;
+  color: #549a6c;
+}
+.list-wrapper {
+  background-color: #ffffff;
+  border-radius: 16px;
+  padding: 24px 24px 28px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+}
+.main-title {
+  text-align: center;
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: #1d7a31;
+  margin: 0 0 20px;
+  padding-bottom: 10px;
+  border-bottom: 2px solid #549a6c;
+}
+.msg {
+  padding: 12px 14px;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  margin: 8px 0 0;
+}
+.msg-loading {
+  background-color: #fffbe6;
+  border: 1px solid #ffcc00;
+  color: #a07e00;
+}
+.msg-error {
+  background-color: #f8d7da;
+  border: 1px solid #f5c6cb;
+  color: #721c24;
+}
+.msg-empty {
+  background-color: #e9ecef;
+  border: 1px solid #ccc;
+  color: #6c757d;
+}
+.table-container {
+  margin-top: 10px;
+  overflow-x: auto;
+}
+.history-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0 8px;
+  text-align: left;
+}
+.history-table thead th {
+  padding: 10px 12px;
+  text-transform: uppercase;
+  font-size: 0.8rem;
+  font-weight: 700;
+  background-color: #1d7a31;
+  color: #ffffff;
+}
+.history-table tbody tr {
+  background-color: #f8fff8;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+}
+.history-table tbody tr:hover {
+  background-color: #d8f1d8;
+}
+.history-table td {
+  padding: 12px 12px;
+  font-size: 0.95rem;
+  color: #333333;
+}
+.status-pill {
+  display: inline-block;
+  min-width: 100px;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-align: center;
+}
+.status-resolved {
+  background-color: #d4edda;
+  color: #155724;
+}
+.status-review {
+  background-color: #fff3cd;
+  color: #856404;
+}
+.status-pending {
+  background-color: #d1ecf1;
+  color: #0c5460;
+}
+.status-closed {
+  background-color: #e2e6ea;
+  color: #495057;
+}
+.actions-cell {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.btn {
+  padding: 7px 14px;
+  border-radius: 4px;
+  border: none;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  color: #ffffff;
+  transition: filter 0.2s;
+}
+.btn-view {
+  background-color: #549a6c;
+}
+.btn-delete {
+  background-color: #dc3545;
+}
+.btn:hover {
+  filter: brightness(1.05);
+}
+@media (max-width: 768px) {
+  .inner-wrapper {
+    padding: 20px 12px 40px;
+  }
+  .inner-panel {
+    border-radius: 24px;
+    padding: 20px 16px 28px;
+  }
+  .list-wrapper {
+    padding: 18px 14px 22px;
+  }
+  .history-header-bar {
+    padding: 8px 14px;
+  }
+}
 </style>

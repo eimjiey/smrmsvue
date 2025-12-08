@@ -1,769 +1,818 @@
 <template>
-    <div class="report-page">
-        <header class="report-header-bar">
-            <div class="report-title-left">
-                <svg viewBox="0 0 24 24" fill="currentColor" class="header-icon-svg">
-                    <path d="M4 4h6v6H4V4zm0 10h6v6H4v-6zm10-10h6v6h-6V4zm0 10h6v6h-6v-6z"/>
-                </svg>
-                REPORT AN INCIDENT
-            </div>
-            <div class="profile-icon-right">
-                <svg viewBox="0 0 24 24" fill="currentColor" class="header-icon-svg-profile">
-                    <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
-                </svg>
-            </div>
-        </header>
-
-        <div class="form-container">
-            <h1 class="main-title-text">STUDENT MISCONDUCT REPORT MANAGEMENT</h1>
-            
-            <div v-if="isSubmitting" class="submission-status submission-loading">
-                Submitting report... Please wait.
-            </div>
-
-            <div v-else-if="submitError" class="submission-status submission-error">
-                🚨 Submission Error: {{ submitError }}
-            </div>
-
-            <form @submit.prevent="handleSubmit" class="incident-form-grid">
-
-                <div class="input-group">
-                    <label for="studentId">Student ID</label>
-                    <input 
-                        type="text" 
-                        id="studentId" 
-                        v-model="form.studentId" 
-                        :disabled="true"
-                        required
-                        class="auto-filled-field"
-                    >
-                    <p v-if="studentsLoadError" class="lookup-status lookup-error">
-                        ❌ Load Error: {{ studentsLoadError }}
-                    </p>
-                    <p v-if="validationErrors.studentId" class="error-message">{{ validationErrors.studentId[0] }}</p>
-                </div>
-
-                <div class="input-group">
-                    <label for="fullNameSelect">Full Name (Select Student)</label>
-                    
-                    <template v-if="isStudentsLoading">
-                        <input type="text" disabled value="Loading student roster from database..." class="loading-input"/>
-                    </template>
-                    
-                    <template v-else>
-                        <select 
-                            id="fullNameSelect" 
-                            v-model="form.studentId" 
-                            :disabled="isSubmitting"
-                            required
-                        >
-                            <option value="" disabled>Select Student Name</option>
-                            <option 
-                                v-for="student in allStudents" 
-                                :key="student.id" 
-                                :value="student.id"
-                            >
-                                {{ student.fullName }}
-                            </option>
-                        </select>
-                    </template>
-
-                    <p v-if="validationErrors.fullName" class="error-message">{{ validationErrors.fullName[0] }}</p>
-                </div>
-
-                <div class="input-group">
-                    <label for="program">Program</label>
-                    <input 
-                        type="text" 
-                        id="program" 
-                        v-model="form.program" 
-                        disabled 
-                        required 
-                        class="auto-filled-field"
-                    >
-                    <p v-if="validationErrors.program" class="error-message">{{ validationErrors.program[0] }}</p>
-                </div>
-
-                <div class="input-group">
-                    <label for="yearLevel">Year Level</label>
-                    <input 
-                        type="text" 
-                        id="yearLevel" 
-                        v-model="form.yearLevel" 
-                        disabled 
-                        required 
-                        class="auto-filled-field"
-                    >
-                    <p v-if="validationErrors.yearLevel" class="error-message">{{ validationErrors.yearLevel[0] }}</p>
-                </div>
-                
-                <div class="input-group">
-                    <label for="section">Section</label>
-                    <input 
-                        type="text" 
-                        id="section" 
-                        v-model="form.section"
-                        disabled
-                        class="auto-filled-field"
-                    >
-                    <p v-if="validationErrors.section" class="error-message">{{ validationErrors.section[0] }}</p>
-                </div>
-
-                <div class="input-group">
-                    <label for="location">Location</label>
-                    <input type="text" id="location" v-model="form.location" required>
-                    <p v-if="validationErrors.location" class="error-message">{{ validationErrors.location[0] }}</p>
-                </div>
-                
-                <div class="date-time-container input-group">
-                    <label for="dateOfIncident" class="date-time-label">Date of Incident</label>
-                    <input type="date" id="dateOfIncident" v-model="form.dateOfIncident" required> 
-                    <p v-if="validationErrors.dateOfIncident" class="error-message">{{ validationErrors.dateOfIncident[0] }}</p>
-                </div>
-                
-                <div class="date-time-container input-group">
-                    <label for="timeOfIncident" class="date-time-label">Time of Incident</label>
-                    <input type="time" id="timeOfIncident" v-model="form.timeOfIncident" required> 
-                    <p v-if="validationErrors.timeOfIncident" class="error-message">{{ validationErrors.timeOfIncident[0] }}</p>
-                </div>
-
-                <div class="input-group">
-                    <label for="offenseCategory">Offense Category</label>
-                    <select id="offenseCategory" v-model="form.offenseCategory" required>
-                        <option value="" disabled>Select Category</option>
-                        <option value="Minor Offense">Minor Offense</option>
-                        <option value="Major Offense">Major Offense</option>
-                    </select>
-                    <p v-if="validationErrors.offenseCategory" class="error-message">{{ validationErrors.offenseCategory[0] }}</p>
-                </div>
-
-                <div class="input-group">
-                    <label for="specificOffense">Specific Offense</label>
-                    <select 
-                        id="specificOffense" 
-                        v-model="form.specificOffense" 
-                        :disabled="!form.offenseCategory"
-                        required
-                    >
-                        <option value="" disabled>
-                            {{ form.offenseCategory ? 'Select specific offense' : 'Select category first' }}
-                        </option>
-                        <option 
-                            v-for="offense in filteredSpecificOffenses" 
-                            :key="offense" 
-                            :value="offense"
-                        >
-                            {{ offense }}
-                        </option>
-                    </select>
-                    <p v-if="validationErrors.specificOffense" class="error-message">{{ validationErrors.specificOffense[0] }}</p>
-                </div>
-                
-                <div class="input-group description-group full-span">
-                    <label for="description">Description</label>
-                    <textarea id="description" v-model="form.description" required></textarea>
-                    <p v-if="validationErrors.description" class="error-message">{{ validationErrors.description[0] }}</p>
-                </div>
-
-                <div class="form-actions full-span">
-                    <button type="button" class="btn-cancel" @click="resetForm">
-                        Cancel
-                    </button>
-                    <button type="submit" class="btn-save" :disabled="isSubmitting || isStudentsLoading || !form.studentId">
-                        {{ isSubmitting ? 'Filing...' : 'Save Incident' }}
-                    </button>
-                </div>
-            </form>
-        </div>
-        
-        <div 
-            v-if="notifier.visible" 
-            class="notifier"
-            :class="{'notifier-success': notifier.type === 'success', 'notifier-error': notifier.type === 'error'}"
-        >
-             <div v-if="notifier.type === 'success'" class="recommendation-content">
-                <p class="notification-title">✅ Report Filed! System Recommendation:</p>
-                <div class="recommendation-box">
-                    <strong>{{ recommendationText }}</strong>
-                </div>
-                <div class="notifier-actions">
-                    <button @click="resetNotifier" class="btn-notifier-close">File New</button>
-                    <button @click="navigateToDetails" class="btn-notifier-view">View Details</button>
-                </div>
-             </div>
-             <div v-else>
-                 {{ notifier.message }}
-             </div>
-        </div>
+  <div class="report-page">
+    <!-- Green header strip reused -->
+    <div class="hero">
+      <UserNavbar />
+      <h1 class="hero-title">
+        STUDENT MISCONDUCT REPORT MANAGEMENT
+      </h1>
     </div>
+
+    <!-- Centered glass card wrapper like AddStudent -->
+    <div class="card-outer">
+      <div class="card-inner">
+        <div class="section-header">REPORT AN INCIDENT</div>
+
+        <div v-if="isSubmitting" class="submission-status submission-loading">
+          Submitting report... Please wait.
+        </div>
+
+        <div v-else-if="submitError" class="submission-status submission-error">
+          🚨 {{ submitError }}
+        </div>
+
+        <!-- White inner form card -->
+        <form @submit.prevent="handleSubmit" class="incident-form">
+          <!-- Student ID -->
+          <div class="form-row">
+            <div class="form-group full">
+              <label for="studentId" class="label">Student ID</label>
+              <input
+                type="text"
+                id="studentId"
+                v-model="form.studentNumber"
+                disabled
+                required
+                class="input pill auto-filled"
+              />
+              <p v-if="studentsLoadError" class="lookup-status lookup-error">
+                ❌ {{ studentsLoadError }}
+              </p>
+              <p
+                v-if="validationErrors.studentNumber"
+                class="error-message"
+              >
+                {{ validationErrors.studentNumber[0] }}
+              </p>
+            </div>
+          </div>
+
+          <!-- Full name select -->
+          <div class="form-row">
+            <div class="form-group full">
+              <label for="fullNameSelect" class="label">
+                Full Name (Select Student)
+              </label>
+
+              <template v-if="isStudentsLoading">
+                <input
+                  type="text"
+                  disabled
+                  value="Loading student roster from database..."
+                  class="input pill loading-input"
+                />
+              </template>
+
+              <template v-else>
+                <select
+                  id="fullNameSelect"
+                  v-model="form.studentId"
+                  :disabled="isSubmitting"
+                  required
+                  class="input pill select"
+                >
+                  <option value="" disabled>Select Student Name</option>
+                  <option
+                    v-for="student in allStudents"
+                    :key="student.id"
+                    :value="student.id"
+                  >
+                    {{ student.full_name }}
+                  </option>
+                </select>
+              </template>
+
+              <p
+                v-if="validationErrors.studentId"
+                class="error-message"
+              >
+                {{ validationErrors.studentId[0] }}
+              </p>
+            </div>
+          </div>
+
+          <!-- Program / Year / Section -->
+          <div class="form-row">
+            <div class="form-group third">
+              <label for="program" class="label">Program</label>
+              <input
+                type="text"
+                id="program"
+                v-model="form.program"
+                disabled
+                required
+                class="input pill auto-filled"
+              />
+              <p
+                v-if="validationErrors.program"
+                class="error-message"
+              >
+                {{ validationErrors.program[0] }}
+              </p>
+            </div>
+
+            <div class="form-group third">
+              <label for="yearLevel" class="label">Year Level</label>
+              <input
+                type="text"
+                id="yearLevel"
+                v-model="form.yearLevel"
+                disabled
+                required
+                class="input pill auto-filled"
+              />
+              <p
+                v-if="validationErrors.yearLevel"
+                class="error-message"
+              >
+                {{ validationErrors.yearLevel[0] }}
+              </p>
+            </div>
+
+            <div class="form-group third">
+              <label for="section" class="label">Section</label>
+              <input
+                type="text"
+                id="section"
+                v-model="form.section"
+                disabled
+                class="input pill auto-filled"
+              />
+              <p
+                v-if="validationErrors.section"
+                class="error-message"
+              >
+                {{ validationErrors.section[0] }}
+              </p>
+            </div>
+          </div>
+
+          <!-- Location / Date / Time -->
+          <div class="form-row">
+            <div class="form-group half">
+              <label for="location" class="label">Location</label>
+              <input
+                type="text"
+                id="location"
+                v-model="form.location"
+                required
+                class="input pill"
+              />
+              <p
+                v-if="validationErrors.location"
+                class="error-message"
+              >
+                {{ validationErrors.location[0] }}
+              </p>
+            </div>
+
+            <div class="form-group quarter">
+              <label for="dateOfIncident" class="label">Date of Incident</label>
+              <input
+                type="date"
+                id="dateOfIncident"
+                v-model="form.dateOfIncident"
+                required
+                class="input pill"
+              />
+              <p
+                v-if="validationErrors.dateOfIncident"
+                class="error-message"
+              >
+                {{ validationErrors.dateOfIncident[0] }}
+              </p>
+            </div>
+
+            <div class="form-group quarter">
+              <label for="timeOfIncident" class="label">Time of Incident</label>
+              <input
+                type="time"
+                id="timeOfIncident"
+                v-model="form.timeOfIncident"
+                required
+                class="input pill"
+              />
+              <p
+                v-if="validationErrors.timeOfIncident"
+                class="error-message"
+              >
+                {{ validationErrors.timeOfIncident[0] }}
+              </p>
+            </div>
+          </div>
+
+          <!-- Offense Category / Specific Offense -->
+          <div class="form-row">
+            <div class="form-group half">
+              <label for="offenseCategory" class="label">Offense Category</label>
+              <select
+                id="offenseCategory"
+                v-model="form.offenseCategory"
+                required
+                class="input pill select"
+              >
+                <option value="" disabled>Select Category</option>
+                <option value="Minor Offense">Minor Offense</option>
+                <option value="Major Offense">Major Offense</option>
+              </select>
+              <p
+                v-if="validationErrors.offenseCategory"
+                class="error-message"
+              >
+                {{ validationErrors.offenseCategory[0] }}
+              </p>
+            </div>
+
+            <div class="form-group half">
+              <label for="specificOffense" class="label">Specific Offense</label>
+              <select
+                id="specificOffense"
+                v-model="form.specificOffense"
+                :disabled="!form.offenseCategory"
+                required
+                class="input pill select"
+              >
+                <option value="" disabled>
+                  {{ form.offenseCategory
+                    ? 'Select specific offense'
+                    : 'Select category first' }}
+                </option>
+                <option
+                  v-for="offense in filteredSpecificOffenses"
+                  :key="offense"
+                  :value="offense"
+                >
+                  {{ offense }}
+                </option>
+              </select>
+              <p
+                v-if="validationErrors.specificOffense"
+                class="error-message"
+              >
+                {{ validationErrors.specificOffense[0] }}
+              </p>
+            </div>
+          </div>
+
+          <!-- Description -->
+          <div class="form-row">
+            <div class="form-group full">
+              <label for="description" class="label">Description</label>
+              <textarea
+                id="description"
+                v-model="form.description"
+                required
+                class="textarea pill-textarea"
+              ></textarea>
+              <p
+                v-if="validationErrors.description"
+                class="error-message"
+              >
+                {{ validationErrors.description[0] }}
+              </p>
+            </div>
+          </div>
+
+          <!-- Actions -->
+          <div class="form-row actions-row">
+            <button
+              type="button"
+              class="btn btn-cancel"
+              @click="resetForm"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              class="btn btn-save"
+              :disabled="isSubmitting || isStudentsLoading || !form.studentId"
+            >
+              {{ isSubmitting ? 'Filing...' : 'Save Incident' }}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Notifier -->
+    <div
+      v-if="notifier.visible"
+      class="notifier"
+      :class="{
+        'notifier-success': notifier.type === 'success',
+        'notifier-error': notifier.type === 'error'
+      }"
+    >
+      <div v-if="notifier.type === 'success'" class="recommendation-content">
+        <p class="notification-title">
+          ✅ Report Filed! System Recommendation:
+        </p>
+        <div class="recommendation-box">
+          <strong>{{ recommendationText }}</strong>
+        </div>
+        <div class="notifier-actions">
+          <button @click="resetNotifier" class="btn-notifier-close">
+            File New
+          </button>
+          <button @click="navigateToDetails" class="btn-notifier-view">
+            View Details
+          </button>
+        </div>
+      </div>
+      <div v-else>
+        {{ notifier.message }}
+      </div>
+    </div>
+  </div>
 </template>
 
 <script setup>
 import { reactive, ref, computed, watch, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
-import api from '@/services/api'; // Import your Axios instance
+import UserNavbar from '@/components/UserNavbar.vue';
+import api from '@/services/api';
 
-const router = useRouter(); 
 
-// 📚 Data Store for all students (fetched from database)
+const router = useRouter();
+
+/* --------- STUDENT DATA --------- */
 const allStudents = ref([]);
-const isStudentsLoading = ref(true); 
+const isStudentsLoading = ref(true);
 const studentsLoadError = ref(null);
 
-// --- Offense Data ---
-// CORRECTED OFFENSE LIST 
+/* --------- OFFENSE OPTIONS --------- */
 const specificOffenseOptions = {
-    'Minor Offense': [
-        "Failure to wear uniform", 
-        "Pornographic materials", 
-        "Littering", 
-        "Loitering", 
-        "Eating in restricted areas", 
-        "Unauthorized use of school facilities",
-        "Lending/borrowing ID", 
-        "Driving violations",
-    ],
-    'Major Offense': [
-        "Alcohol/drugs/weapons", 
-        "Smoking", 
-        "Disrespect", 
-        "Vandalism", 
-        "Cheating/forgery", 
-        "Barricades/obstructions", 
-        "Physical/verbal assault", 
-        "Hazing", 
-        "Harassment/sexual abuse", 
-        "Unauthorized software/gadgets", 
-        "Unrecognized fraternity/sorority", 
-        "Gambling", 
-        "Public indecency", 
-        "Offensive/subversive materials", 
-        "Grave threats", 
-        "Inciting fight/sedition", 
-        "Unauthorized activity", 
-        "Bullying",
-    ],
+  'Minor Offense': [
+    'Failure to wear uniform',
+    'Pornographic materials',
+    'Littering',
+    'Loitering',
+    'Eating in restricted areas',
+    'Unauthorized use of school facilities',
+    'Lending/borrowing ID',
+    'Driving violations',
+  ],
+  'Major Offense': [
+    'Alcohol/drugs/weapons',
+    'Smoking',
+    'Disrespect',
+    'Vandalism',
+    'Cheating/forgery',
+    'Barricades/obstructions',
+    'Physical/verbal assault',
+    'Hazing',
+    'Harassment/sexual abuse',
+    'Unauthorized software/gadgets',
+    'Unrecognized fraternity/sorority',
+    'Gambling',
+    'Public indecency',
+    'Offensive/subversive materials',
+    'Grave threats',
+    'Inciting fight/sedition',
+    'Unauthorized activity',
+    'Bullying',
+  ],
 };
 
-// --- Form State ---
+/* --------- FORM STATE --------- */
 const form = reactive({
-    studentId: '', // Binds to Full Name dropdown value (the student_number)
-    fullName: '', // Display/Submission field
-    program: '', 
-    yearLevel: '', 
-    section: '', 
-    dateOfIncident: '', 
-    timeOfIncident: '', 
-    location: '',
-    offenseCategory: '', 
-    specificOffense: '', 
-    description: '',
+  studentId: '',
+  studentNumber: '',
+  program: '',
+  yearLevel: '',
+  section: '',
+  dateOfIncident: '',
+  timeOfIncident: '',
+  location: '',
+  offenseCategory: '',
+  specificOffense: '',
+  description: '',
 });
 
-// --- API/Submission State ---
+/* --------- SUBMISSION / VALIDATION STATE --------- */
 const isSubmitting = ref(false);
 const submitError = ref(null);
-const validationErrors = ref({}); 
+const validationErrors = ref({});
 
-// --- Optimization/Notifier State ---
+/* --------- NOTIFIER STATE --------- */
 const notifier = reactive({
-    visible: false,
-    message: '',
-    type: 'success', 
+  visible: false,
+  message: '',
+  type: 'success',
 });
 const recommendationText = ref('');
 const newIncidentId = ref(null);
 
-// --- Computed Property for Filtering ---
+/* --------- COMPUTED --------- */
 const filteredSpecificOffenses = computed(() => {
-    const category = form.offenseCategory;
-    return specificOffenseOptions[category] || [];
+  const category = form.offenseCategory;
+  return specificOffenseOptions[category] || [];
 });
 
-
-// ------------------------------------------------------------------
-// 🎯 DATA FETCHING IMPLEMENTATION (Loads all students on page load)
-// ------------------------------------------------------------------
-
+/* --------- DATA FETCH --------- */
 const fetchAllStudents = async () => {
-    isStudentsLoading.value = true;
-    studentsLoadError.value = null;
-    
-    const STUDENTS_ENDPOINT = '/students/dropdown'; 
-    
-    try {
-        const response = await api.get(STUDENTS_ENDPOINT);
-        allStudents.value = response.data; 
-
-    } catch (error) {
-        studentsLoadError.value = 'Failed to load student roster. Check API configuration.';
-        console.error("Error fetching students:", error);
-        
-    } finally {
-        isStudentsLoading.value = false;
-    }
+  isStudentsLoading.value = true;
+  studentsLoadError.value = null;
+  try {
+    const response = await api.get('/students/dropdown');
+    allStudents.value = response.data || [];
+  } catch (e) {
+    studentsLoadError.value =
+      'Failed to load student roster. Check API configuration or server logs.';
+    console.error(e.response?.data?.error || e);
+  } finally {
+    isStudentsLoading.value = false;
+  }
 };
 
-// Run the fetch function when the component is mounted to the DOM
-onMounted(() => {
-    fetchAllStudents();
-});
+onMounted(fetchAllStudents);
 
-
-// ------------------------------------------------------------------
-// 🎯 FULL NAME SELECTION WATCHER (Populates all derived fields)
-// ------------------------------------------------------------------
-watch(() => form.studentId, (newId) => {
-    if (newId) {
-        const selectedStudent = allStudents.value.find(s => s.id === newId);
-        
-        if (selectedStudent) {
-            // Populate fields using the fetched data. 
-            // We assume the API returns properties like 'program' and 'year_level'
-            
-            form.fullName = selectedStudent.fullName || (selectedStudent.first_name + ' ' + selectedStudent.last_name);
-            
-            // Fetching program and yearLevel:
-            form.program = selectedStudent.program || selectedStudent.program_code || ''; 
-            form.yearLevel = selectedStudent.year_level || selectedStudent.yearLevel || ''; 
-            
-            form.section = selectedStudent.section || '';
-            studentsLoadError.value = null;
-        } else {
-            // Fallback clear logic
-            form.fullName = '';
-            form.program = '';
-            form.yearLevel = '';
-            form.section = '';
-            studentsLoadError.value = 'Selected student details are missing.';
-        }
+/* --------- WATCHERS --------- */
+watch(
+  () => form.studentId,
+  newId => {
+    if (!newId) {
+      form.studentNumber = '';
+      form.program = '';
+      form.yearLevel = '';
+      form.section = '';
+      return;
+    }
+    const selectedStudent = allStudents.value.find(s => s.id === newId);
+    if (selectedStudent) {
+      form.studentNumber =
+        selectedStudent.student_number || selectedStudent.student_id || '';
+      form.program = selectedStudent.program || '';
+      form.yearLevel = selectedStudent.year_level || '';
+      form.section = selectedStudent.section || '';
+      studentsLoadError.value = null;
     } else {
-        // Clear all dependent fields if the dropdown is reset
-        form.fullName = '';
-        form.program = '';
-        form.yearLevel = '';
-        form.section = '';
+      form.studentNumber = '';
+      form.program = '';
+      form.yearLevel = '';
+      form.section = '';
+      studentsLoadError.value = 'Selected student details are missing.';
     }
-});
+  }
+);
 
+watch(
+  () => form.offenseCategory,
+  (newCategory, oldCategory) => {
+    if (newCategory !== oldCategory) form.specificOffense = '';
+  }
+);
 
-// --- Watcher to Reset Specific Offense (Unchanged) ---
-watch(() => form.offenseCategory, (newCategory, oldCategory) => {
-    if (newCategory !== oldCategory) {
-        form.specificOffense = ''; 
-    }
-});
-
-// --- Notifier Functions (Unchanged) ---
+/* --------- NOTIFIER HELPERS --------- */
 const showNotifier = (message, type = 'success', duration = 3000) => {
-    notifier.message = message;
-    notifier.type = type;
-    notifier.visible = true;
-
+  notifier.message = message;
+  notifier.type = type;
+  notifier.visible = true;
+  if (type === 'error') {
     setTimeout(() => {
-        if (notifier.type === 'error') {
-            notifier.visible = false;
-        }
+      notifier.visible = false;
     }, duration);
+  }
 };
 
 const resetNotifier = () => {
-    notifier.visible = false;
-    resetForm(); 
+  notifier.visible = false;
+  resetForm();
 };
 
-// --- Reset Form Function (Unchanged) ---
 const resetForm = () => {
-    form.studentId = '';
-    form.fullName = '';
-    form.program = '';
-    form.yearLevel = '';
-    form.section = '';
-    form.dateOfIncident = '';
-    form.timeOfIncident = '';
-    form.location = '';
-    form.offenseCategory = '';
-    form.specificOffense = '';
-    studentsLoadError.value = null;
+  form.studentId = '';
+  form.studentNumber = '';
+  form.program = '';
+  form.yearLevel = '';
+  form.section = '';
+  form.dateOfIncident = '';
+  form.timeOfIncident = '';
+  form.location = '';
+  form.offenseCategory = '';
+  form.specificOffense = '';
+  form.description = '';
+  studentsLoadError.value = null;
+  validationErrors.value = {};
+  submitError.value = null;
 };
 
-// --- Navigation (Unchanged) ---
+/* --------- NAVIGATION --------- */
 const navigateToDetails = () => {
-    if (newIncidentId.value) {
-        router.push({ name: 'ReportDetails', params: { id: newIncidentId.value } }); 
-    }
-    resetNotifier();
+  if (newIncidentId.value) {
+    router.push({ name: 'ReportDetails', params: { id: newIncidentId.value } });
+  }
+  resetNotifier();
 };
 
-// ------------------------------------------------------------------
-// --- SUBMISSION METHOD (Unchanged) ---
-// ------------------------------------------------------------------
+/* --------- SUBMIT --------- */
 const handleSubmit = async () => {
-    submitError.value = null;
-    validationErrors.value = {}; 
+  submitError.value = null;
+  validationErrors.value = {};
 
-    if (isStudentsLoading.value) {
-        submitError.value = 'Please wait for student roster to finish loading.';
-        showNotifier(submitError.value, 'error', 3000);
-        return;
+  if (isStudentsLoading.value) {
+    submitError.value = 'Please wait for student roster to finish loading.';
+    showNotifier(submitError.value, 'error', 3000);
+    return;
+  }
+
+  const selectedStudent = allStudents.value.find(s => s.id === form.studentId);
+  const fullName = selectedStudent?.full_name || '';
+
+  const requiredFields = [
+    'studentId',
+    'studentNumber',
+    'program',
+    'yearLevel',
+    'dateOfIncident',
+    'timeOfIncident',
+    'location',
+    'offenseCategory',
+    'specificOffense',
+    'description',
+  ];
+  const missing = requiredFields.filter(
+    f => !form[f] || String(form[f]).trim() === ''
+  );
+  if (missing.length) {
+    submitError.value = 'Please fill out all required fields.';
+    showNotifier(submitError.value, 'error', 3000);
+    return;
+  }
+
+  isSubmitting.value = true;
+
+  const payload = {
+    student_id: form.studentNumber,
+    offenseCategory: form.offenseCategory,
+    specificOffense: form.specificOffense,
+    dateOfIncident: form.dateOfIncident,
+    timeOfIncident: form.timeOfIncident,
+    location: form.location,
+    description: form.description,
+    fullName: fullName,
+    program: form.program,
+    yearLevel: form.yearLevel,
+    section: form.section,
+    actionTaken: null,
+  };
+
+  try {
+    const response = await api.post('/incidents', payload);
+    const data = response.data;
+    recommendationText.value =
+      data.recommendation || 'The case has been filed and is awaiting review.';
+    newIncidentId.value = data.incident?.id || null;
+    showNotifier('✅ Incident Successfully Reported!', 'success', 60000);
+  } catch (error) {
+    let msg = 'An unexpected error occurred.';
+    if (error.response) {
+      if (error.response.status === 422) {
+        validationErrors.value = error.response.data.errors || {};
+        msg =
+          error.response.data.message ||
+          'Validation failed. Please correct the highlighted fields.';
+      } else if (error.response.data?.message) {
+        msg = error.response.data.message;
+      } else {
+        msg = `Server Error (${error.response.status}).`;
+      }
+    } else {
+      msg = 'Network Error: Could not connect to the API server.';
     }
-    
-    // Client-side Required Field Check
-    const requiredFields = [ 'studentId', 'fullName', 'program', 'yearLevel', 'dateOfIncident', 'timeOfIncident', 'location', 'offenseCategory', 'specificOffense', 'description'];
-    let missingFields = requiredFields.filter(field => !form[field] || String(form[field]).trim() === '');
-    
-    if (missingFields.length > 0) {
-        const friendlyNames = missingFields.map(f => f.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase()));
-        submitError.value = `Please fill out all required fields: ${friendlyNames.join(', ')}`;
-        return; 
-    }
-    
-    isSubmitting.value = true;
-    const payload = JSON.parse(JSON.stringify(form));
-    
-    try {
-        const response = await api.post('/incidents', payload); 
-
-        if (response.status === 201 || response.status === 200) {
-            const data = response.data;
-            
-            recommendationText.value = data.recommendation || 'The case has been filed and is awaiting review.';
-            newIncidentId.value = data.incident.id || 'N/A'; 
-
-            showNotifier('✅ Incident Successfully Reported!', 'success', 60000); 
-        }
-    } catch (error) {
-        let errorMessage = 'An unexpected error occurred.';
-        if (error.response) {
-            if (error.response.status === 422) {
-                validationErrors.value = error.response.data.errors;
-                errorMessage = 'Validation failed. Please correct the highlighted fields.';
-            } else if (error.response.data && error.response.data.message) {
-                errorMessage = error.response.data.message;
-            } else {
-                errorMessage = `Server Error (${error.response.status}).`;
-            }
-        } else {
-            errorMessage = 'Network Error: Could not connect to the API server.';
-        }
-        submitError.value = errorMessage;
-        showNotifier(errorMessage, 'error', 5000);
-
-    } finally {
-        isSubmitting.value = false;
-    }
+    submitError.value = msg;
+    showNotifier(msg, 'error', 5000);
+  } finally {
+    isSubmitting.value = false;
+  }
 };
 </script>
 
 <style scoped>
-/* --- STYLES FOR THE GREEN DESIGN --- */
-
 .report-page {
-    width: 100%;
-    min-height: 100vh;
-    background-color: #EAF9E7; 
-    font-family: Arial, sans-serif;
-    padding-top: 50px;
-    box-sizing: border-box;
+  min-height: 100vh;
+  background-color: #cfe9c1;
+  display: flex;
+  flex-direction: column;
 }
 
-/* --- HEADER BAR STYLES --- */
-.report-header-bar {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 15px 40px;
-    height: 50px;
-    background-color: #51A687; 
-    color: white;
-    font-weight: bold;
-    z-index: 10;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+.hero {
+  background-color: #78ae63;
+  border-bottom-left-radius: 40px;
+  border-bottom-right-radius: 40px;
+  padding-bottom: 30px;
 }
 
-.report-title-left {
-    display: flex;
-    align-items: center;
-    font-size: 1.1rem;
+.hero-title {
+  margin: 0;
+  padding: 18px 0 0;
+  text-align: center;
+  color: #0e5821;
+  font-size: 22px;
+  font-weight: 700;
 }
 
-.header-icon-svg {
-    width: 24px;
-    height: 24px;
-    color: white;
-    margin-right: 8px;
-}
-.header-icon-svg-profile {
-    width: 28px;
-    height: 28px;
-    color: #51A687;
+/* Outer card wrapper like AddStudent */
+.card-outer {
+  max-width: 860px;
+  margin: 24px auto 40px auto;
+  padding: 0 12px;
 }
 
-.profile-icon-right {
-    background-color: white;
-    border-radius: 50px;
-    width: 36px;
-    height: 36px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
+.card-inner {
+  padding: 20px;
+  border-radius: 24px;
+  background: linear-gradient(180deg, #f4faf8 0%, #e4f3ec 40%, #d7ecdf 100%);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.25);
+  position: relative;
 }
 
-/* --- MAIN FORM LAYOUT --- */
-.form-container {
-    max-width: 1000px;
-    margin: 20px auto;
-    padding: 30px;
-    background-color: #51A687; 
-    border-radius: 10px;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-    border: 1px solid #448f72; 
+/* Floating section header pill */
+.section-header {
+  position: absolute;
+  top: 6px;
+  left: 28px;
+  padding: 6px 18px;
+  background: #ffffff;
+  border-radius: 999px;
+  font-weight: bold;
+  font-size: 0.9rem;
+  color: #1d3e21;
+  z-index: 2;
 }
 
-.main-title-text {
-    font-size: 1.8rem;
-    font-weight: bold;
-    text-align: center;
-    color: white; 
-    margin-bottom: 40px;
-    padding-bottom: 10px;
+/* Inner white form card */
+.incident-form {
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 20px;
+  padding: 30px 24px 24px 24px;
+  display: flex;
+  flex-direction: column;
 }
 
-/* --- GRID LAYOUT --- */
-.incident-form-grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr); 
-    gap: 20px 30px; 
-    align-items: start;
+/* Grid-style layout */
+.form-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 10px;
 }
 
-.full-span {
-    grid-column: 1 / -1;
+.form-group {
+  margin-bottom: 4px;
+  flex: 1 1 100%;
 }
 
-/* --- INPUT FIELD STYLES (Applies to all inputs/selects) --- */
-.input-group label, .date-time-label {
-    display: block;
-    font-size: 0.9rem;
-    color: #f0f0f0; 
-    margin-bottom: 5px;
-    font-weight: 600;
+.form-group.full {
+  flex: 1 1 100%;
 }
 
-.input-group input,
-.input-group textarea,
-.date-time-container input,
-.input-group select { 
-    width: 100%;
-    padding: 15px;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.05);
-    background-color: #fff;
-    font-size: 1rem;
-    box-sizing: border-box;
-    -webkit-appearance: none; 
-    -moz-appearance: none;
-    appearance: none;
+.form-group.half {
+  flex: 1 1 calc(50% - 5px);
 }
 
-.input-group select {
-    background-image: url('data:image/svg+xml;utf8,<svg fill="black" height="24" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg"><path d="M7 10l5 5 5-5z"/></svg>');
-    background-repeat: no-repeat;
-    background-position: right 10px center;
-    padding-right: 30px;
+.form-group.third {
+  flex: 1 1 calc(33.333% - 7px);
 }
 
-.description-group textarea {
-    min-height: 200px;
+.form-group.quarter {
+  flex: 1 1 calc(25% - 8px);
 }
 
-/* Auto-filled field style */
-.auto-filled-field {
-    background-color: #f0fff0; /* Light green/off-white */
-    color: #444;
+/* Labels and inputs styled like AddStudent */
+.label {
+  display: block;
+  font-size: 0.8rem;
+  font-weight: 700;
+  margin-bottom: 3px;
+  color: #1d3e21;
 }
 
-/* Error feedback */
-.error-message {
-    color: #ffdddd; 
-    font-size: 0.8rem;
-    margin-top: 5px;
+.input {
+  width: 100%;
+  padding: 8px 14px;
+  font-size: 0.9rem;
+  box-sizing: border-box;
+  border: none;
+  outline: none;
+  background: #ffffff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
 }
 
-/* --- STYLES FOR LOOKUP/LOADING FEATURE --- */
-
-.loading-input {
-    background-color: #f0f0f0; 
-    color: #555;
-    font-style: italic;
-    cursor: wait;
+.pill {
+  border-radius: 999px;
 }
 
-/* Status messages for ID Lookup */
-.lookup-status {
-    font-size: 0.8rem;
-    margin-top: 5px;
-    font-weight: 500;
+.auto-filled {
+  background-color: #f0fff0;
 }
 
-.lookup-loading {
-    color: #ffffff; 
+.textarea {
+  width: 100%;
+  min-height: 140px;
+  padding: 10px 16px;
+  font-size: 0.9rem;
+  border: none;
+  outline: none;
+  resize: vertical;
+  background: #ffffff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
 }
 
-.lookup-error {
-    color: #ffdddd; 
+.pill-textarea {
+  border-radius: 16px;
 }
 
-/* Submission Status Styles */
+/* Select custom arrow */
+.select {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="none" stroke="%231d3e21"><path d="M7 7l3 3 3-3m0 6l-3-3-3 3" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>');
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+  background-size: 1.2em;
+  padding-right: 30px;
+}
+
+/* Messages */
 .submission-status {
-    padding: 10px;
-    margin-bottom: 20px;
-    border-radius: 4px;
-    text-align: center;
-    font-weight: bold;
+  margin-bottom: 10px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 8px 10px;
+  border-radius: 6px;
 }
 
 .submission-loading {
-    background-color: #1a1e1b;
-    color: white;
+  background-color: #fffbe6;
+  border: 1px solid #ffcc00;
+  color: #a07e00;
 }
 
 .submission-error {
-    background-color: #e53e3e;
-    color: white;
+  background-color: #f8d7da;
+  border: 1px solid #f5c6cb;
+  color: #721c24;
 }
 
-
-/* --- BUTTONS --- */
-.form-actions {
-    grid-column: 1 / -1;
-    display: flex;
-    justify-content: flex-end; 
-    gap: 15px;
-    margin-top: 30px;
-    padding-top: 10px;
+.error-message {
+  color: #d9534f;
+  font-size: 0.75rem;
+  margin-top: 4px;
 }
 
-.form-actions button {
-    padding: 12px 30px;
-    border: none;
-    border-radius: 4px;
-    font-weight: bold;
-    cursor: pointer;
-    transition: background-color 0.2s;
-    background-color: #323A36; 
-    color: white;
+/* Actions row */
+.actions-row {
+  justify-content: flex-end;
+  margin-top: 12px;
+  gap: 10px;
 }
 
-.form-actions button.btn-cancel {
-    background-color: #778899; 
-}
-.form-actions button.btn-cancel:hover:not(:disabled) {
-    background-color: #5d6872;
-}
-
-.form-actions button.btn-save:hover:not(:disabled) {
-    background-color: #1a1e1b;
-}
-
-.form-actions button:disabled {
-    cursor: not-allowed;
-    opacity: 0.6;
+.btn {
+  padding: 10px 24px;
+  border-radius: 10px;
+  border: none;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+  text-transform: uppercase;
 }
 
-/* --- NOTIFIER (Success Modal) */
+.btn-save {
+  background-color: #064b2a;
+  color: #ffffff;
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.25);
+}
+
+.btn-cancel {
+  background-color: #778899;
+  color: #ffffff;
+}
+
+/* Notifier */
 .notifier {
-    position: fixed;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%); 
-    padding: 15px 30px;
-    border-radius: 8px;
-    color: white;
-    font-weight: bold;
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
-    z-index: 1000;
-    width: 350px; 
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
 }
 
-.notifier-success {
-    background-color: #4CAF50; 
-    min-height: 180px; 
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-}
-
-.recommendation-content {
-    color: white;
-    margin-bottom: 10px;
-}
-.notification-title {
-    font-size: 1.1rem;
-    margin-bottom: 5px;
-}
-.recommendation-box {
-    padding: 8px;
-    background-color: #81C784; 
-    border-radius: 4px;
-    color: #1b5e20; 
-    font-size: 1.1rem;
-    word-wrap: break-word;
-}
-.notifier-actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 10px;
-    margin-top: 15px;
-}
-.btn-notifier-close, .btn-notifier-view {
-    padding: 8px 15px;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    font-weight: bold;
-}
-.btn-notifier-close {
-    background-color: #fff;
-    color: #444;
-}
-.btn-notifier-view {
-    background-color: #38a169;
-    color: white;
-}
-
-.notifier-error {
-    background-color: #e53e3e; 
-    animation: fadeInOut 5s ease-in-out forwards;
-}
-
-/* Responsive Adjustments */
+/* Responsive */
 @media (max-width: 768px) {
-    .incident-form-grid {
-        grid-template-columns: 1fr;
-        gap: 20px;
-    }
-    .form-container {
-        padding: 20px;
-    }
-    .report-header-bar {
-        padding: 15px 20px;
-    }
-    .form-actions {
-        justify-content: space-around;
-    }
-}
+  .card-outer {
+    margin: 16px auto 32px auto;
+    padding: 0 10px;
+  }
 
-/* Keyframes for error notifier */
-@keyframes fadeInOut {
-    0% { opacity: 0; transform: translate(-50%, calc(-50% + 20px)); } 
-    10% { opacity: 1; transform: translate(-50%, -50%); } 
-    90% { opacity: 1; transform: translate(-50%, -50%); } 
-    100% { opacity: 0; transform: translate(-50%, calc(-50% - 20px)); } 
+  .incident-form {
+    padding: 22px 16px 18px 16px;
+  }
+
+  .form-group.half,
+  .form-group.third,
+  .form-group.quarter {
+    flex: 1 1 100%;
+  }
 }
 </style>

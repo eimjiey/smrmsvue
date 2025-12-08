@@ -1,177 +1,136 @@
 <template>
-    <nav class="navbar">
-        <div class="nav-left">
-        <div class="logo" @click="$router.push('/user/dashboard')">
-            <i class="fas fa-search"></i>
-            <div class="logo-text">
-            <span class="brand">SMRMS</span>
-            <span class="tagline"></span>
-            </div>
-        </div>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <!-- Left: logo block -->
+      <div class="logo-block" @click="$router.push('/user/dashboard')">
+        <div class="logo-icon"></div>
+        <span class="logo-text">SMRMS</span>
+      </div>
 
-        <ul class="nav-menu">
-            <li><router-link to="/user/dashboard">Home</router-link></li>
-            <li><router-link to="/file-incident-report">File Incident Report</router-link></li>
-            <li><router-link to="/user/profile">Profile</router-link></li>
-        </ul>
-        </div>
+      <!-- Center: rounded dark menu pill -->
+      <nav class="center-menu">
+        <router-link
+          to="/user/dashboard"
+          class="menu-link"
+          active-class="menu-link-active"
+          exact
+        >
+          DASHBOARD
+        </router-link>
+        <router-link
+          to="/file-incident-report"
+          class="menu-link"
+          active-class="menu-link-active"
+        >
+          REPORT INCIDENT
+        </router-link>
+        <router-link
+          :to="{ name: 'UserReportHistory' }"
+          class="menu-link"
+          active-class="menu-link-active"
+        >
+          VIEW REPORTS
+        </router-link>
+      </nav>
 
-        <!-- notification bell -->
-        <!-- <div class="nav-right">
-        <i class="fas fa-bell" @click="$router.push('/user/notification')">
-            <span class="badge" v-if="unreadCount > 0">{{ unreadCount }}</span>
-        </i> -->
-
-        <div class="hamburger" @click="toggleMenu">
-            <span :class="{ open: isOpen }"></span>
-            <span :class="{ open: isOpen }"></span>
-            <span :class="{ open: isOpen }"></span>
-        </div>
-
-    </nav>
+      <!-- Right: profile pill -->
+      <button class="profile-pill" @click="$router.push('/user/profile')">
+        PROFILE
+      </button>
+    </div>
+  </header>
 </template>
 
 <script>
 export default {
-    name: "UserNavbar",
-    data() {
-        return {
-        isOpen: false,
-        unreadCount: 3, 
-        };
-    },
-    methods: {
-        toggleMenu() {
-        this.isOpen = !this.isOpen;
-        },
-    },
+  name: 'UserNavbar',
 };
 </script>
 
 <style scoped>
-.navbar {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 10px 20px;
-    background-color: #3490dc;
-    color: white;
-    position: relative;
+.topbar {
+  width: 100%;
+  background-color: transparent; /* header background from parent */
 }
 
-.nav-left {
-    display: flex;
-    align-items: center;
+/* row with logo, menu pill, profile button */
+.topbar-inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  height: 72px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 24px 0;
 }
 
-.logo {
-    display: flex;
-    align-items: center;
-    cursor: pointer;
+/* logo block */
+.logo-block {
+  display: flex;
+  align-items: center;
+  background-color: #00361d;
+  border-radius: 4px;
+  padding: 10px 22px;
+  cursor: pointer;
 }
 
-.logo i {
-    margin-right: 8px;
+.logo-icon {
+  width: 36px;
+  height: 36px;
+  background-color: #78ae63;
+  border-radius: 4px;
+  margin-right: 10px;
 }
 
-.logo-text .brand {
-    font-weight: bold;
-    margin-right: 4px;
+.logo-text {
+  color: #e4f4df;
+  font-weight: bold;
+  letter-spacing: 1px;
 }
 
-.nav-menu {
-    display: flex;
-    list-style: none;
-    margin-left: 20px;
+/* center dark pill menu */
+.center-menu {
+  display: flex;
+  align-items: center;
+  background-color: #00361d;
+  border-radius: 24px;
+  padding: 10px 32px;
+  gap: 30px;
 }
 
-.nav-menu li {
-    margin-right: 15px;
+/* links */
+.menu-link {
+  color: #e4f4df;
+  text-decoration: none;
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 1px;
 }
 
-.nav-menu li a {
-    color: white;
-    text-decoration: none;
+.menu-link-active {
+  text-decoration: underline;
 }
 
-.nav-right {
-    display: flex;
-    align-items: center;
+/* profile button */
+.profile-pill {
+  background-color: #e1e1e1;
+  color: #00361d;
+  border: none;
+  border-radius: 18px;
+  padding: 10px 40px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 1px;
+  cursor: pointer;
 }
 
-.nav-right i {
-    font-size: 18px;
-    cursor: pointer;
-    position: relative;
-}
-
-.badge {
-    position: absolute;
-    top: -6px;
-    right: -6px;
-    background: red;
-    color: white;
-    font-size: 10px;
-    border-radius: 50%;
-    padding: 2px 5px;
-}
-
-.hamburger {
-    display: none;
-    flex-direction: column;
-    cursor: pointer;
-    margin-left: 15px;
-}
-
-.hamburger span {
-    width: 25px;
-    height: 3px;
-    background: white;
-    margin: 3px 0;
-    transition: 0.3s;
-}
-
-.hamburger span.open:nth-child(1) {
-    transform: rotate(45deg) translate(5px, 5px);
-}
-
-.hamburger span.open:nth-child(2) {
-    opacity: 0;
-}
-
-.hamburger span.open:nth-child(3) {
-    transform: rotate(-45deg) translate(6px, -6px);
-}
-
-.mobile-menu {
-    display: none;
-    flex-direction: column;
-    background-color: #3490dc;
-    position: absolute;
-    top: 60px;
-    left: 0;
-    width: 100%;
-    padding: 10px 0;
-}
-
-.mobile-menu li {
-    padding: 10px 20px;
-}
-
-.mobile-menu li a {
-    color: white;
-    text-decoration: none;
-}
-
-@media (max-width: 768px) {
-    .nav-menu {
-    display: none;
-    }
-    .hamburger {
-        display: flex;
-    }
-    .mobile-menu {
-        display: flex;
-    }
+/* responsive */
+@media (max-width: 900px) {
+  .topbar-inner {
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 12px;
+    height: auto;
+  }
 }
 </style>

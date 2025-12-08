@@ -1,364 +1,591 @@
+<script setup>
+import { reactive, ref, onMounted } from 'vue';
+import api from '@/services/api';
+import { useRouter } from 'vue-router';
+import UserNavbar from '@/components/UserNavbar.vue';
+
+// --- Setup ---
+const router = useRouter();
+
+// --- Component State ---
+const user = reactive({
+  id: null,
+  name: '',
+  email: '',
+  profilePicturePath: '',
+  profilePictureUrl: null,
+  profilePictureTimestamp: Date.now(),
+  role: '',
+  newPassword: '',
+  newPasswordConfirmation: '',
+  originalName: '',
+  originalEmail: '',
+});
+
+const profileImageFile = ref(null);
+const isLoading = ref(true);
+const isSubmitting = ref(false);
+const statusMessage = ref(null);
+const statusType = ref(''); // 'success' | 'error'
+const isEditingDetails = ref(false);
+
+// --- Constants ---
+const DEFAULT_AVATAR = 'https://placehold.co/100x100/A0AEC0/ffffff?text=User';
+const STORAGE_PATH = '/storage/';
+
+// --- Helpers ---
+const getImagePath = (path) => {
+  if (!path || path.startsWith('http')) {
+    return DEFAULT_AVATAR;
+  }
+  let fullUrl = STORAGE_PATH + path;
+  if (user.profilePictureTimestamp) {
+    fullUrl += `?t=${user.profilePictureTimestamp}`;
+  }
+  return fullUrl;
+};
+
+// --- Profile Logic ---
+const fetchProfile = async () => {
+  isLoading.value = true;
+  statusMessage.value = null;
+  try {
+    const response = await api.get('/me');
+    const data = response.data;
+
+    user.id = data.id;
+    user.name = data.name;
+    user.email = data.email;
+    user.role = data.role;
+
+    user.profilePicturePath = data.profile_picture;
+    user.profilePictureTimestamp = Date.now();
+    user.profilePictureUrl = getImagePath(data.profile_picture);
+
+    user.originalName = data.name;
+    user.originalEmail = data.email;
+  } catch (error) {
+    statusType.value = 'error';
+    const networkError =
+      error.message && error.message.toLowerCase().includes('network');
+    statusMessage.value = networkError
+      ? 'Network error: Unable to connect to the server. Please check your network connection and ensure the backend server is running.'
+      : error.response?.data?.message || 'Failed to load profile data.';
+    console.error('Fetch profile error:', error);
+  } finally {
+    isLoading.value = false;
+  }
+};
+
+const toggleEditDetails = () => {
+  isEditingDetails.value = !isEditingDetails.value;
+  if (!isEditingDetails.value) {
+    user.name = user.originalName;
+    user.email = user.originalEmail;
+  }
+};
+
+const handleFileUpload = (event) => {
+  profileImageFile.value = event.target.files[0];
+  if (profileImageFile.value) {
+    user.profilePictureUrl = URL.createObjectURL(profileImageFile.value);
+  }
+};
+
+const handleProfileUpdate = async (event) => {
+  event.preventDefault();
+  isSubmitting.value = true;
+  statusMessage.value = null;
+
+  try {
+    const formData = new FormData();
+    formData.append('name', user.name);
+    formData.append('email', user.email);
+    formData.append('_method', 'PUT');
+
+    if (profileImageFile.value) {
+      formData.append('profile_picture', profileImageFile.value);
+    }
+
+    if (user.newPassword) {
+      formData.append('password', user.newPassword);
+      formData.append('password_confirmation', user.newPasswordConfirmation);
+    }
+
+    const response = await api.post('/profile', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+
+    statusType.value = 'success';
+    statusMessage.value =
+      response.data.message || 'Profile updated successfully!';
+
+    const updatedUser = response.data.user;
+
+    user.name = updatedUser.name;
+    user.email = updatedUser.email;
+    user.role = updatedUser.role;
+
+    user.profilePicturePath = updatedUser.profile_picture;
+    user.profilePictureTimestamp = Date.now();
+    user.profilePictureUrl = getImagePath(updatedUser.profile_picture);
+
+    user.originalName = updatedUser.name;
+    user.originalEmail = updatedUser.email;
+
+    user.newPassword = '';
+    user.newPasswordConfirmation = '';
+    profileImageFile.value = null;
+
+    isEditingDetails.value = false;
+
+    localStorage.setItem('user', JSON.stringify(updatedUser));
+  } catch (error) {
+    statusType.value = 'error';
+    let errorMessage =
+      error.response?.data?.message || 'Failed to update profile.';
+    if (error.response?.data?.errors) {
+      errorMessage +=
+        ': ' +
+        Object.values(error.response.data.errors).flat().join('; ');
+    }
+    statusMessage.value = errorMessage;
+    console.error('Profile update error:', error);
+  } finally {
+    isSubmitting.value = false;
+    setTimeout(() => {
+      statusMessage.value = null;
+    }, 7000);
+  }
+};
+
+const logout = () => {
+  localStorage.removeItem('token');
+  localStorage.removeItem('user');
+  router.push('/login');
+};
+
+onMounted(fetchProfile);
+</script>
+
 <template>
-  <div class="admin-profile">
-    <!-- Page header -->
-    <header class="admin-profile__header">
-      <h1>Admin Profile</h1>
-      <p>Manage your account information and security.</p>
-    </header>
+  <div class="user-profile-container">
+    <UserNavbar />
 
-    <section class="admin-profile__content">
-      <!-- Left: basic info card -->
-      <div class="admin-profile__card">
-        <h2>Account Details</h2>
+    <div class="profile-content">
+      <h1>Your Profile Settings</h1>
 
-        <div class="admin-profile__avatar-wrapper">
-          <!-- use your own avatar image or initials -->
-          <div class="admin-profile__avatar">
-            <span>A</span>
-          </div>
-          <div>
-            <p class="admin-profile__name">Admin Name</p>
-            <p class="admin-profile__role">System Administrator</p>
+      <!-- Loading State -->
+      <div
+        v-if="isLoading"
+        class="text-center p-10 text-indigo-700 font-semibold text-lg"
+      >
+        Loading profile...
+      </div>
+
+      <form v-else @submit="handleProfileUpdate" class="space-y-6">
+        <!-- Status Message -->
+        <div
+          v-if="statusMessage"
+          :class="{
+            'bg-green-100 border-green-500 text-green-700':
+              statusType === 'success',
+            'bg-red-100 border-red-500 text-red-700': statusType === 'error',
+          }"
+          class="border p-4 rounded-lg shadow-sm text-sm"
+        >
+          <p class="font-bold mb-1">
+            {{ statusType === 'success' ? 'Success' : 'Error' }}:
+          </p>
+          <p>{{ statusMessage }}</p>
+        </div>
+
+        <!-- Profile Picture -->
+        <div class="border border-gray-200 p-4 rounded-xl bg-gray-50">
+          <h2 class="section-title">Profile Picture</h2>
+          <div class="avatar-row">
+            <img
+              :src="user.profilePictureUrl"
+              alt="Profile Avatar"
+              class="avatar-img"
+              @error="user.profilePictureUrl = DEFAULT_AVATAR"
+            />
+
+            <div class="avatar-inputs">
+              <label class="label-sm">Change Avatar (Max 2MB)</label>
+              <input
+                type="file"
+                @change="handleFileUpload"
+                accept="image/png, image/jpeg, image/gif"
+                :disabled="isSubmitting"
+                class="file-input"
+              />
+              <p v-if="profileImageFile" class="file-hint">
+                File selected: {{ profileImageFile.name }}
+              </p>
+            </div>
           </div>
         </div>
 
-        <form class="admin-profile__form" @submit.prevent="updateProfile">
-          <div class="admin-profile__field">
-            <label for="fullName">Full Name</label>
-            <input
-              id="fullName"
-              v-model="form.fullName"
-              type="text"
-              placeholder="Enter full name"
-              required
-            />
-          </div>
-
-          <div class="admin-profile__field">
-            <label for="email">Email</label>
-            <input
-              id="email"
-              v-model="form.email"
-              type="email"
-              placeholder="Enter email"
-              required
-            />
-          </div>
-
-          <div class="admin-profile__field">
-            <label for="phone">Phone</label>
-            <input
-              id="phone"
-              v-model="form.phone"
-              type="text"
-              placeholder="Enter phone number"
-            />
-          </div>
-
-          <div class="admin-profile__buttons">
-            <button type="submit" class="btn btn--primary">
-              Save Changes
-            </button>
-            <button type="button" class="btn btn--ghost" @click="resetProfile">
-              Cancel
-            </button>
-          </div>
-        </form>
-      </div>
-
-      <!-- Right: password and other settings -->
-      <div class="admin-profile__card">
-        <h2>Security</h2>
-        <p class="admin-profile__hint">
-          Update your password regularly to keep your account secure.
-        </p>
-
-        <form class="admin-profile__form" @submit.prevent="updatePassword">
-          <div class="admin-profile__field">
-            <label for="currentPassword">Current Password</label>
-            <input
-              id="currentPassword"
-              v-model="passwordForm.current"
-              type="password"
-              placeholder="Enter current password"
-              required
-            />
-          </div>
-
-          <div class="admin-profile__field">
-            <label for="newPassword">New Password</label>
-            <input
-              id="newPassword"
-              v-model="passwordForm.new"
-              type="password"
-              placeholder="Enter new password"
-              required
-            />
-          </div>
-
-          <div class="admin-profile__field">
-            <label for="confirmPassword">Confirm New Password</label>
-            <input
-              id="confirmPassword"
-              v-model="passwordForm.confirm"
-              type="password"
-              placeholder="Confirm new password"
-              required
-            />
-          </div>
-
-          <div class="admin-profile__buttons">
-            <button type="submit" class="btn btn--primary">
-              Update Password
-            </button>
-          </div>
-        </form>
-
-        <hr class="admin-profile__divider" />
-
-        <div class="admin-profile__danger">
-          <h3>Danger Zone</h3>
-          <p>Log out of this device or all devices.</p>
-          <div class="admin-profile__buttons">
-            <button type="button" class="btn btn--ghost" @click="logout">
-              Log out
-            </button>
+        <!-- Account Info -->
+        <div
+          class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4 border border-indigo-200 p-4 rounded-xl bg-indigo-50/60"
+        >
+          <div class="md:col-span-2 header-row">
+            <h2 class="section-title text-indigo-700">Account Information</h2>
             <button
               type="button"
-              class="btn btn--danger"
-              @click="logoutAllDevices"
+              @click="toggleEditDetails"
+              :disabled="isSubmitting"
+              class="pill-btn"
+              :class="
+                isEditingDetails
+                  ? 'pill-btn-danger'
+                  : 'pill-btn-primary'
+              "
             >
-              Log out on all devices
+              {{ isEditingDetails ? 'Cancel Edit' : 'Edit Details' }}
             </button>
           </div>
+
+          <div>
+            <label for="name" class="label-sm">Full Name</label>
+            <input
+              id="name"
+              type="text"
+              v-model="user.name"
+              required
+              :disabled="isSubmitting || !isEditingDetails"
+              class="text-input"
+              :class="{
+                'input-disabled': !isEditingDetails,
+              }"
+            />
+          </div>
+
+          <div>
+            <label for="email" class="label-sm">Email Address (Login)</label>
+            <input
+              id="email"
+              type="email"
+              v-model="user.email"
+              required
+              :disabled="isSubmitting || !isEditingDetails"
+              class="text-input"
+              :class="{
+                'input-disabled': !isEditingDetails,
+              }"
+            />
+          </div>
+
+          <div class="md:col-span-2 role-text">
+            User Role:
+            <span class="role-badge">{{ user.role }}</span>
+          </div>
         </div>
-      </div>
-    </section>
+
+        <!-- Change Password -->
+        <div
+          class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4 border border-yellow-300 p-4 rounded-xl bg-yellow-50/70"
+        >
+          <div class="md:col-span-2">
+            <h2 class="section-title text-yellow-700">Change Password</h2>
+            <p class="help-text">
+              Leave fields blank if you do not wish to change your password.
+            </p>
+          </div>
+
+          <div>
+            <label for="newPassword" class="label-sm">New Password</label>
+            <input
+              id="newPassword"
+              type="password"
+              v-model="user.newPassword"
+              :disabled="isSubmitting"
+              class="text-input"
+            />
+          </div>
+
+          <div>
+            <label for="confirmPassword" class="label-sm"
+              >Confirm Password</label
+            >
+            <input
+              id="confirmPassword"
+              type="password"
+              v-model="user.newPasswordConfirmation"
+              :disabled="isSubmitting"
+              class="text-input"
+            />
+          </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="actions-row">
+          <button
+            type="button"
+            @click="logout"
+            class="logout-btn"
+          >
+            Logout
+          </button>
+          <button
+            type="submit"
+            :disabled="isSubmitting"
+            class="save-btn"
+            :class="{ 'btn-disabled': isSubmitting }"
+          >
+            {{ isSubmitting ? 'Saving Profile...' : 'Update Profile' }}
+          </button>
+        </div>
+      </form>
+    </div>
   </div>
 </template>
 
-<script>
-export default {
-  name: 'AdminProfile',
-  data() {
-    return {
-      // mock data – replace with API data when you connect backend
-      form: {
-        fullName: 'Admin Name',
-        email: 'admin@example.com',
-        phone: '+63 900 000 0000'
-      },
-      passwordForm: {
-        current: '',
-        new: '',
-        confirm: ''
-      }
-    }
-  },
-  methods: {
-    updateProfile() {
-      // TODO: call your API here
-      console.log('Saving profile', this.form)
-      alert('Profile saved (demo).')
-    },
-    resetProfile() {
-      // TODO: reset from original values / API data
-      window.location.reload()
-    },
-    updatePassword() {
-      if (this.passwordForm.new !== this.passwordForm.confirm) {
-        alert('New passwords do not match.')
-        return
-      }
-      // TODO: call your API here
-      console.log('Updating password', this.passwordForm)
-      alert('Password updated (demo).')
-      this.passwordForm.current = ''
-      this.passwordForm.new = ''
-      this.passwordForm.confirm = ''
-    },
-    logout() {
-      // TODO: clear auth + redirect
-      alert('Logging out from this device (demo).')
-    },
-    logoutAllDevices() {
-      // TODO: API call to invalidate all sessions
-      alert('Logging out from all devices (demo).')
-    }
+<style scoped>
+.user-profile-container {
+  min-height: 100vh;
+  padding: 0 0 40px;
+  background: #eaf9e7;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+.user-profile-container::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: radial-gradient(circle at top left, #9fd49b 0, #eaf9e7 55%);
+  z-index: -1;
+}
+
+/* Center card under navbar */
+.profile-content {
+  max-width: 720px;
+  margin: 40px auto 0;
+  background: #ffffff;
+  border-radius: 24px;
+  padding: 32px 26px 28px;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.18);
+  border: 4px solid #78ae63;
+}
+
+/* Title bar */
+.profile-content h1 {
+  text-align: center;
+  background: #78ae63;
+  color: #0e5821;
+  border-radius: 999px;
+  padding: 10px 18px;
+  font-size: 1.4rem;
+  margin-bottom: 18px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+}
+
+/* Generic section title */
+.section-title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+/* Avatar section */
+.avatar-row {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+@media (min-width: 640px) {
+  .avatar-row {
+    flex-direction: row;
+    align-items: center;
   }
 }
-</script>
 
-<style scoped>
-.admin-profile {
-  padding: 24px 32px;
-  background-color: #f5f7f2;
-  min-height: calc(100vh - 64px); /* adjust based on navbar height */
-  box-sizing: border-box;
-}
-
-/* header */
-.admin-profile__header h1 {
-  margin: 0;
-  font-size: 24px;
-  color: #0b3a23;
-}
-
-.admin-profile__header p {
-  margin-top: 4px;
-  color: #5c6b63;
-  font-size: 14px;
-}
-
-/* layout */
-.admin-profile__content {
-  margin-top: 24px;
-  display: grid;
-  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
-  gap: 24px;
-}
-
-/* card */
-.admin-profile__card {
-  background-color: #ffffff;
-  border-radius: 12px;
-  padding: 20px 24px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
-}
-
-.admin-profile__card h2 {
-  margin: 0 0 12px;
-  font-size: 18px;
-  color: #0b3a23;
-}
-
-.admin-profile__hint {
-  margin: 0 0 16px;
-  font-size: 13px;
-  color: #6b7b73;
-}
-
-/* avatar + name */
-.admin-profile__avatar-wrapper {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 16px;
-}
-
-.admin-profile__avatar {
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
-  background-color: #0b3a23;
-  color: #ffffff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 600;
-  font-size: 20px;
-}
-
-.admin-profile__name {
-  margin: 0;
-  font-weight: 600;
-  color: #0b3a23;
-}
-
-.admin-profile__role {
-  margin: 2px 0 0;
-  font-size: 13px;
-  color: #6b7b73;
-}
-
-/* form */
-.admin-profile__form {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.admin-profile__field {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.admin-profile__field label {
-  font-size: 13px;
-  color: #41514a;
-}
-
-.admin-profile__field input {
-  border-radius: 8px;
-  border: 1px solid #c5d2cb;
-  padding: 8px 10px;
-  font-size: 14px;
-  outline: none;
-  transition: border-color 0.15s ease;
-}
-
-.admin-profile__field input:focus {
-  border-color: #0b3a23;
-}
-
-/* buttons */
-.admin-profile__buttons {
-  margin-top: 8px;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.btn {
+.avatar-img {
+  width: 96px;
+  height: 96px;
   border-radius: 999px;
-  padding: 8px 18px;
-  font-size: 13px;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  object-fit: cover;
+  border: 4px solid #4f46e5;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.25);
+}
+
+.avatar-inputs {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* Inputs */
+.label-sm {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #374151;
+}
+
+.text-input {
+  margin-top: 4px;
+  width: 100%;
+  padding: 9px 11px;
+  border-radius: 10px;
+  border: 1px solid #d1d5db;
+  font-size: 0.9rem;
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s, background-color 0.15s;
+}
+
+.text-input:focus {
+  border-color: #4f46e5;
+  box-shadow: 0 0 0 1px rgba(79, 70, 229, 0.3);
+}
+
+.input-disabled {
+  background-color: #f3f4f6;
+  cursor: not-allowed;
+}
+
+/* File input */
+.file-input {
+  width: 100%;
+  font-size: 0.85rem;
+}
+
+.file-hint {
+  font-size: 0.75rem;
+  color: #4f46e5;
+}
+
+/* Account header row */
+.header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+/* Role text */
+.role-text {
+  font-size: 0.85rem;
+  color: #4b5563;
+}
+
+.role-badge {
+  font-weight: 700;
+  color: #0f5132;
+}
+
+/* Pills */
+.pill-btn {
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 600;
   border: none;
   cursor: pointer;
+  transition: background-color 0.15s, transform 0.1s;
 }
 
-.btn--primary {
-  background-color: #0b3a23;
+.pill-btn-primary {
+  background-color: #4f46e5;
   color: #ffffff;
 }
 
-.btn--ghost {
-  background-color: transparent;
-  color: #0b3a23;
-  border: 1px solid #0b3a23;
+.pill-btn-primary:hover {
+  background-color: #4338ca;
 }
 
-.btn--danger {
-  background-color: #e53935;
+.pill-btn-danger {
+  background-color: #dc2626;
   color: #ffffff;
 }
 
-/* extra */
-.admin-profile__divider {
-  margin: 20px 0 16px;
+.pill-btn-danger:hover {
+  background-color: #b91c1c;
+}
+
+/* Help text */
+.help-text {
+  font-size: 0.8rem;
+  color: #4b5563;
+}
+
+/* Actions */
+.actions-row {
+  padding-top: 8px;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.logout-btn {
+  padding: 10px 18px;
+  border-radius: 999px;
   border: none;
-  border-top: 1px solid #e0e6e2;
+  background-color: #dc2626;
+  color: #ffffff;
+  font-weight: 700;
+  font-size: 0.9rem;
+  box-shadow: 0 4px 10px rgba(220, 38, 38, 0.35);
+  cursor: pointer;
+  transition: background-color 0.15s, transform 0.1s;
+  min-width: 130px;
 }
 
-.admin-profile__danger h3 {
-  margin: 0 0 4px;
-  font-size: 15px;
-  color: #a12826;
+.logout-btn:hover {
+  background-color: #b91c1c;
+  transform: translateY(-1px);
 }
 
-.admin-profile__danger p {
-  margin: 0 0 10px;
-  font-size: 13px;
-  color: #6b7b73;
+.save-btn {
+  flex: 1;
+  padding: 10px 18px;
+  border-radius: 999px;
+  border: none;
+  background-color: #16a34a;
+  color: #ffffff;
+  font-weight: 800;
+  font-size: 0.95rem;
+  box-shadow: 0 5px 14px rgba(22, 163, 74, 0.45);
+  cursor: pointer;
+  transition: background-color 0.15s, transform 0.1s, box-shadow 0.15s;
 }
 
-/* responsive */
-@media (max-width: 900px) {
-  .admin-profile__content {
-    grid-template-columns: 1fr;
+.save-btn:hover {
+  background-color: #166534;
+  transform: translateY(-1px);
+}
+
+.btn-disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .profile-content {
+    margin-top: 24px;
+    padding: 22px 18px 20px;
+    border-width: 3px;
+  }
+
+  .profile-content h1 {
+    font-size: 1.2rem;
+    padding: 8px 14px;
+  }
+
+  .actions-row {
+    flex-direction: column-reverse;
+  }
+
+  .logout-btn,
+  .save-btn {
+    width: 100%;
   }
 }
 </style>
