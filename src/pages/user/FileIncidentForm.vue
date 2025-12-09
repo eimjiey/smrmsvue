@@ -3,9 +3,10 @@
     <!-- Green header strip reused -->
     <div class="hero">
       <UserNavbar />
-      <h1 class="hero-title">
-        STUDENT MISCONDUCT REPORT MANAGEMENT
-      </h1>
+      <h1 class="hero-title">MISCONTRACK</h1>
+        <p class="hero-subtitle">
+          Providing a Smarter Approach and Secure Reporting You Can Rely On.
+        </p>
     </div>
 
     <!-- Centered glass card wrapper like AddStudent -->
@@ -331,7 +332,6 @@ import { reactive, ref, computed, watch, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import UserNavbar from '@/components/UserNavbar.vue';
 import api from '@/services/api';
-
 
 const router = useRouter();
 
@@ -814,5 +814,32 @@ const handleSubmit = async () => {
   .form-group.quarter {
     flex: 1 1 100%;
   }
+
+  .hero-inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 40px 24px 0;
+  text-align: center;
+}
+
+.hero-hello {
+  margin-top: 20px;
+  font-size: 2rem;
+  letter-spacing: 2px;
+  color: #0e5821;
+}
+
+.hero-title {
+  color: #0e5821;
+  font-size: 2.4rem;
+  letter-spacing: 3px;
+  margin: 10px 0 10px;
+  font-weight: 800;
+}
+
+.hero-subtitle {
+  color: #f7fff4;
+  font-size: 0.95rem;
+}
 }
 </style>

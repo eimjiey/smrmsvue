@@ -103,9 +103,8 @@
 
         <h1 :style="welcomeTextStyle">WELCOME BACK!</h1>
 
-        <div :style="descStyle">
-          STUDENT MISCONDUCT REPORT MANAGEMENT
-        </div>
+      <div :style="descStyle">MISCONTRACK </div>
+      <div :style="desStyle">"Providing a Smarter Approach and Secure Reporting You Can Rely On."</div>
 
         <div :style="loginBoxStyle">
           <div :style="loginPromptStyle">Already have an account?</div>
@@ -458,6 +457,17 @@ export default {
     },
 
     descStyle() {
+      return {
+        fontSize: '1.8rem',
+        fontWeight: 'Bold',
+        margin: '10px 0 10px 0',
+        zIndex: 1,
+        textAlign: 'center',
+        color: '#ccc',
+      };
+
+          },
+    desStyle() {
       return {
         fontSize: '1.2rem',
         fontWeight: 'normal',

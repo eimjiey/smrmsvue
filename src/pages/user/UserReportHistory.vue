@@ -2,20 +2,20 @@
   <div class="history-page">
     <div class="hero">
       <UserNavbar />
-      <h1 class="hero-title">
-        STUDENT MISCONDUCT REPORT MANAGEMENT
-      </h1>
+      <h1 class="hero-title">MISCONTRACK</h1>
+        <p class="hero-subtitle">
+          Providing a Smarter Approach and Secure Reporting You Can Rely On.
+        </p>
     </div>
 
     <div class="inner-wrapper">
       <div class="inner-panel">
         <header class="history-header-bar">
           <div class="history-title-left">
-            <span class="header-icon">📝</span>
-            MY FILED INCIDENT REPORTS
+            <span class="header-icon"></span>
           </div>
           <div class="history-profile-icon">
-            <span class="history-profile-inner">👤</span>
+            <span class="history-profile-inner"></span>
           </div>
         </header>
 
@@ -400,5 +400,32 @@ export default {
   .history-header-bar {
     padding: 8px 14px;
   }
+
+  .hero-inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 40px 24px 0;
+  text-align: center;
+}
+
+.hero-hello {
+  margin-top: 20px;
+  font-size: 2rem;
+  letter-spacing: 2px;
+  color: #0e5821;
+}
+
+.hero-title {
+  color: #0e5821;
+  font-size: 2.4rem;
+  letter-spacing: 3px;
+  margin: 10px 0 10px;
+  font-weight: 800;
+}
+
+.hero-subtitle {
+  color: #f7fff4;
+  font-size: 0.95rem;
+}
 }
 </style>

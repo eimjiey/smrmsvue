@@ -3,136 +3,113 @@ import { ref, onMounted, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import api from '@/services/api';
 import AdminNavbar from '@/pages/navbar/AdminNavbar.vue';
-import formBg from '@/assets/FORMBACKGROUND.jpg';
 
-// --- Setup ---
 const router = useRouter();
 
-// --- State Management ---
+// data
 const trashIncidents = ref([]);
 const isLoading = ref(false);
 const error = ref(null);
 const searchTerm = ref('');
-const sortBy = ref('deleted_at');
-const sortDirection = ref('desc');
 
-// --- Pagination State ---
 const currentPage = ref(1);
 const itemsPerPage = ref(10);
 
-// --- API Fetching Logic ---
+// modal state
+const showConfirmModal = ref(false);
+const confirmType = ref('restore'); // 'restore' | 'force'
+const selectedIncident = ref(null);
+
+// fetch trashed incidents (Laravel soft deletes)[web:8]
 const fetchTrashIncidents = async () => {
-    isLoading.value = true;
-    error.value = null;
-    try {
-        // 🔑 Fetch ALL incidents, including soft-deleted ones (using Laravel's 'trashed' query scope)
-        const response = await api.get('/incidents?trashed=true'); 
-        let receivedData = response.data;
-        if (receivedData && receivedData.data && Array.isArray(receivedData.data)) {
-            receivedData = receivedData.data;
-        }
-        // Filter client-side to only show soft-deleted records (deleted_at is not null)
-        trashIncidents.value = Array.isArray(receivedData) 
-            ? receivedData.filter(i => i.deleted_at !== null) 
-            : [];
-        currentPage.value = 1; 
-    } catch (err) {
-        let errorMessage = 'Could not load trash reports. Check server connectivity or Admin privileges.';
-        if (err.response && err.response.data && err.response.data.message) {
-            errorMessage = err.response.data.message;
-        }
-        error.value = errorMessage;
-    } finally {
-        isLoading.value = false;
+  isLoading.value = true;
+  error.value = null;
+  try {
+    const response = await api.get('/incidents?trashed=true');
+    let receivedData = response.data;
+    if (receivedData && receivedData.data && Array.isArray(receivedData.data)) {
+      receivedData = receivedData.data;
     }
+    trashIncidents.value = Array.isArray(receivedData)
+      ? receivedData.filter(i => i.deleted_at !== null)
+      : [];
+    currentPage.value = 1;
+  } catch (err) {
+    let errorMessage =
+      'Could not load trash reports. Check server connectivity or Admin privileges.';
+    if (err.response?.data?.message) {
+      errorMessage = err.response.data.message;
+    }
+    error.value = errorMessage;
+  } finally {
+    isLoading.value = false;
+  }
 };
 
-// --- Action Handlers (Admin Only) ---
-
-const handleRestore = async (incident) => {
-    if (!confirm(`Are you sure you want to RESTORE incident ID ${incident.id}?`)) return;
-
-    try {
-        await api.post(`/incidents/${incident.id}/restore`);
-        error.value = `✅ Incident ID ${incident.id} restored successfully.`;
-        await fetchTrashIncidents(); // Refresh the trash list
-    } catch (err) {
-        error.value = `❌ Failed to restore incident ${incident.id}. Check permissions.`;
-    } finally {
-        setTimeout(() => { error.value = null; }, 5000);
-    }
+// open / close notifier
+const openConfirm = (type, incident) => {
+  confirmType.value = type;
+  selectedIncident.value = incident;
+  showConfirmModal.value = true;
 };
 
-const handleForceDelete = async (incident) => {
-    if (!confirm(`WARNING: Are you sure you want to PERMANENTLY DELETE incident ID ${incident.id}? This action cannot be undone.`)) return;
-
-    try {
-        // Uses the dedicated force-delete route
-        await api.delete(`/incidents/${incident.id}/force-delete`); 
-        error.value = `✅ Incident ID ${incident.id} permanently deleted.`;
-        await fetchTrashIncidents(); // Refresh the trash list
-    } catch (err) {
-        error.value = `❌ Failed to force delete incident ${incident.id}. Check permissions.`;
-    } finally {
-        setTimeout(() => { error.value = null; }, 5000);
-    }
+const closeConfirm = () => {
+  showConfirmModal.value = false;
+  selectedIncident.value = null;
 };
 
-// --- Computed Properties for Filtering, Sorting, and Pagination ---
+// YES handler (restore or force delete)[web:19]
+const confirmAction = async () => {
+  if (!selectedIncident.value) return;
+  const incident = selectedIncident.value;
 
+  try {
+    if (confirmType.value === 'restore') {
+      await api.post(`/incidents/${incident.id}/restore`);
+      error.value = `✅ Incident ID ${incident.id} restored successfully.`;
+    } else {
+      await api.delete(`/incidents/${incident.id}/force-delete`);
+      error.value = `✅ Incident ID ${incident.id} permanently deleted.`;
+    }
+    await fetchTrashIncidents();
+  } catch (err) {
+    error.value =
+      confirmType.value === 'restore'
+        ? `❌ Failed to restore incident ${incident.id}.`
+        : `❌ Failed to permanently delete incident ${incident.id}.`;
+  } finally {
+    setTimeout(() => {
+      error.value = null;
+    }, 5000);
+    closeConfirm();
+  }
+};
+
+// filtering + pagination
 const filteredIncidents = computed(() => {
-    const incidentList = trashIncidents.value || [];
-    if (!searchTerm.value) return incidentList;
-    const lowerCaseSearch = searchTerm.value.toLowerCase();
-    return incidentList.filter(
-        (incident) =>
-            String(incident.id).includes(lowerCaseSearch) ||
-            (incident.full_name && incident.full_name.toLowerCase().includes(lowerCaseSearch)) ||
-            (incident.specific_offense && incident.specific_offense.toLowerCase().includes(lowerCaseSearch))
-    );
-});
-
-const sortedIncidents = computed(() => {
-    const list = Array.isArray(filteredIncidents.value) ? [...filteredIncidents.value] : [];
-    if (!sortBy.value || list.length === 0) return list;
-
-    list.sort((a, b) => {
-        const aValue = a[sortBy.value];
-        const bValue = b[sortBy.value];
-        const comparison = String(aValue || '').localeCompare(String(bValue || ''));
-        return sortDirection.value === 'asc' ? comparison : -comparison;
-    });
-    return list;
+  const list = trashIncidents.value || [];
+  if (!searchTerm.value) return list;
+  const lower = searchTerm.value.toLowerCase();
+  return list.filter(
+    incident =>
+      String(incident.id).includes(lower) ||
+      (incident.full_name &&
+        incident.full_name.toLowerCase().includes(lower)) ||
+      (incident.specific_offense &&
+        incident.specific_offense.toLowerCase().includes(lower)),
+  );
 });
 
 const paginatedIncidents = computed(() => {
-    const start = (currentPage.value - 1) * itemsPerPage.value;
-    const end = start + itemsPerPage.value;
-    return sortedIncidents.value.slice(start, end);
+  const start = (currentPage.value - 1) * itemsPerPage.value;
+  return filteredIncidents.value.slice(start, start + itemsPerPage.value);
 });
 
-const totalPages = computed(() => {
-    return Math.ceil(sortedIncidents.value.length / itemsPerPage.value);
-});
+const totalPages = computed(
+  () => Math.ceil(filteredIncidents.value.length / itemsPerPage.value),
+);
 
-// --- Utility Functions ---
-
-const toggleSort = (column) => {
-    if (sortBy.value === column) {
-        sortDirection.value = sortDirection.value === 'asc' ? 'desc' : 'asc';
-    } else {
-        sortBy.value = column;
-        sortDirection.value = 'desc';
-    }
-    currentPage.value = 1;
-};
-
-const getSortIcon = (column) => {
-    if (sortBy.value !== column) return ''; 
-    return sortDirection.value === 'asc' ? '▲' : '▼';
-};
-
-const formatDate = (dateString) => {
+const formatDate = dateString => {
   if (!dateString) return 'N/A';
   const date = new Date(dateString);
   if (Number.isNaN(date.getTime())) return 'N/A';
@@ -145,129 +122,407 @@ const formatDate = (dateString) => {
   });
 };
 
+const goToPage = page => {
+  if (page < 1 || page > totalPages.value) return;
+  currentPage.value = page;
+};
+
+// PAGE‑LEVEL DESIGN (matches screenshot)
+const pageStyle = {
+  maxWidth: '100%',
+  minHeight: '100vh',
+  margin: '0',
+  padding: '20px 32px 30px 32px',
+  background: '#74a765;',
+  boxSizing: 'border-box',
+};
+const headerTitleStyle = {
+  fontSize: '1.6rem',
+  fontWeight: '800',
+  color: '#083318',
+  marginBottom: '4px',
+};
+const headerSubtitleStyle = {
+  fontSize: '0.9rem',
+  color: '#0f4221',
+  marginBottom: '18px',
+  maxWidth: '900px',
+};
+
+// top control bar
+const controlBarOuterStyle = {
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  background: '#96d78b',
+  borderRadius: '999px',
+  padding: '6px 10px 6px 14px',
+  marginBottom: '14px',
+};
+const searchWrapperStyle = {
+  flex: 1,
+  marginRight: '16px',
+};
+const searchInputStyle = {
+  width: '100%',
+  padding: '8px 10px',
+  borderRadius: '999px',
+  border: 'none',
+  outline: 'none',
+  fontSize: '0.85rem',
+  background: '#f5fff5',
+};
+const totalReportsPillStyle = {
+  minWidth: '220px',
+  textAlign: 'center',
+  padding: '8px 14px',
+  borderRadius: '999px',
+  background: '#3d7b3b',
+  color: '#e8ffe8',
+  fontWeight: '700',
+  fontSize: '0.8rem',
+};
+
+// big frame
+const tableFrameOuterStyle = {
+  marginTop: '10px',
+  borderRadius: '24px',
+  background: '#0c4924',
+  padding: '10px',
+};
+const tableFrameInnerStyle = {
+  borderRadius: '20px',
+  background: '#d9f6d7',
+  padding: '8px 10px 10px 10px',
+  minHeight: '420px',
+  boxSizing: 'border-box',
+};
+
+// header row
+const headerRowBarStyle = {
+  display: 'grid',
+  gridTemplateColumns: '2fr 2fr 2fr 1.5fr',
+  columnGap: '8px',
+  padding: '8px 14px',
+  borderRadius: '999px',
+  background: '#c1e8b9',
+  fontSize: '0.78rem',
+  fontWeight: '700',
+  color: '#164322',
+};
+
+// body container
+const tableBodyContainerStyle = {
+  marginTop: '6px',
+  borderRadius: '18px',
+  background: '#e5ffe4',
+  padding: '8px 0',
+  minHeight: '330px',
+  overflowX: 'auto',
+};
+
+const tableStyle = {
+  width: '100%',
+  borderCollapse: 'collapse',
+  fontSize: '0.85rem',
+};
+const tableDataCellStyle = type => {
+  let fontWeight = '400';
+  if (type === 'name') fontWeight = '600';
+  return {
+    padding: '8px 14px',
+    color: '#14301c',
+    fontWeight,
+    borderBottom: '1px solid #c7ebc0',
+    whiteSpace: 'nowrap',
+  };
+};
+
+// action buttons
+const actionButtonStyle = danger => ({
+  padding: '4px 10px',
+  marginRight: '6px',
+  borderRadius: '16px',
+  border: 'none',
+  cursor: 'pointer',
+  fontSize: '0.8rem',
+  fontWeight: '600',
+  background: danger ? '#fecaca' : '#a7e3a7',
+  color: danger ? '#991b1b' : '#064e3b',
+});
+
+// misc
+const loadingStyle = {
+  textAlign: 'center',
+  padding: '24px',
+  color: '#064e3b',
+  fontWeight: '600',
+  fontSize: '1rem',
+};
+const errorBoxStyle = {
+  marginTop: '10px',
+  padding: '10px 14px',
+  borderRadius: '10px',
+  border: '1px solid',
+  background: '#fee2e2',
+  fontSize: '0.85rem',
+};
+const noDataStyle = {
+  textAlign: 'center',
+  padding: '40px 20px',
+};
+const noDataTitleStyle = {
+  fontWeight: '700',
+  fontSize: '1.1rem',
+  color: '#064e3b',
+  marginBottom: '4px',
+};
+const noDataSubTitleStyle = {
+  fontSize: '0.9rem',
+  color: '#14532d',
+};
+
+// pagination
+const paginationContainerStyle = {
+  display: 'flex',
+  justifyContent: 'center',
+  alignItems: 'center',
+  marginTop: '12px',
+  gap: '12px',
+};
+const paginationButtonStyle = disabled => ({
+  padding: '6px 12px',
+  borderRadius: '999px',
+  border: 'none',
+  color: '#ffffff',
+  cursor: disabled ? 'not-allowed' : 'pointer',
+  opacity: disabled ? 0.6 : 1,
+  backgroundColor: '#14532d',
+});
+const paginationInfoStyle = {
+  fontSize: '0.85rem',
+  color: '#064e3b',
+  fontWeight: '500',
+};
+
+// notifier modal
+const modalOverlayStyle = {
+  position: 'fixed',
+  inset: 0,
+  background: 'rgba(0,0,0,0.4)',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  zIndex: 50,
+};
+const modalBoxStyle = {
+  background: '#0f5132',
+  borderRadius: '18px',
+  padding: '18px',
+  minWidth: '320px',
+  maxWidth: '420px',
+};
+const modalInnerStyle = {
+  background: '#e6ffe6',
+  borderRadius: '14px',
+  padding: '24px 24px 18px 24px',
+};
+const modalTitleStyle = {
+  fontSize: '0.95rem',
+  fontWeight: '800',
+  textAlign: 'center',
+  marginBottom: '4px',
+};
+const modalTextStyle = {
+  fontSize: '0.95rem',
+  fontWeight: '500',
+  textAlign: 'center',
+  marginBottom: '18px',
+};
+const modalButtonsRowStyle = {
+  display: 'flex',
+  justifyContent: 'center',
+  gap: '16px',
+};
+const modalBtnStyle = primary => ({
+  minWidth: '110px',
+  padding: '8px 16px',
+  borderRadius: '999px',
+  border: 'none',
+  cursor: 'pointer',
+  background: primary ? '#7fd37f' : '#a7e3a7',
+  color: '#064e3b',
+  fontWeight: '700',
+  fontSize: '0.85rem',
+});
 
 onMounted(fetchTrashIncidents);
-
-// --- Layout Styles (Reusing main component styles for consistency) ---
-
-const formWrapperOuterStyle = { maxWidth: '100%', margin: '0 auto', padding: '0 0' };
-const formWrapperInnerStyle = { padding: '30px', borderRadius: '30px', backgroundImage: `url(${formBg})`, backgroundSize: 'cover', boxShadow: '0 10px 20px rgba(0,0,0,0.25)', position: 'relative' };
-const sectionHeaderStyle = { position: 'absolute', top: '10px', left: '40px', padding: '8px 25px', background: '#ffffff', borderRadius: '999px', fontWeight: 'bold', fontSize: '1rem', zIndex: 2 };
-const contentCardStyle = { background: 'rgba(255,255,255,0.9)', borderRadius: '25px', padding: '45px 35px 35px 35px', display: 'flex', flexDirection: 'column' };
-const mainHeadingStyle = { fontSize: '1.4rem', fontWeight: '800', color: '#cc0000', margin: '0 0 6px 0', textAlign: 'center' };
-const subHeadingStyle = { color: '#4b5563', marginBottom: '18px', fontSize: '0.9rem', textAlign: 'center' };
-const controlBarStyle = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#ffffff', padding: '10px 18px', borderRadius: '999px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)', marginBottom: '18px' };
-const searchWrapperStyle = { width: '50%', position: 'relative' };
-const searchInputStyle = { width: '100%', padding: '8px 10px 8px 36px', border: 'none', borderRadius: '999px', outline: 'none', fontSize: '0.85rem', boxShadow: '0 1px 3px rgba(0,0,0,0.12)' };
-const searchIconStyle = { position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', width: '18px', height: '18px', color: '#9ca3af' };
-const totalReportsStyle = { fontSize: '0.95rem', fontWeight: '600', color: '#1d3e21' };
-const loadingStyle = { textAlign: 'center', padding: '24px', color: '#1d3e21', fontWeight: '600', fontSize: '1rem' };
-const tableOuterPanelStyle = { marginTop: '4px', borderRadius: '22px', padding: '10px', background: 'linear-gradient(145deg, rgba(204,0,0,0.35), rgba(255,102,0,0.45))' };
-const tableWrapperStyle = { overflowX: 'auto', borderRadius: '18px', background: 'rgba(0,0,0,0.15)' };
-const tableStyle = { width: '100%', borderCollapse: 'separate', borderSpacing: 0, minWidth: '900px' };
-const tableHeaderStyle = { background: '#8b0000', color: '#ffffff' };
-const tableHeaderCellStyle = (position) => {
-    let radius = {};
-    if (position === 'tl') radius = { borderTopLeftRadius: '16px' };
-    if (position === 'tr') radius = { borderTopRightRadius: '16px' };
-    return { padding: '10px 16px', textAlign: 'left', fontSize: '0.75rem', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.06em', cursor: 'pointer', ...radius };
-};
-const tableDataCellStyle = (type) => {
-    let color = '#fff0f0';
-    let fontWeight = '400';
-    if (type === 'id' || type === 'name') { color = '#ffffff'; fontWeight = '600'; }
-    return { padding: '10px 16px', fontSize: '0.85rem', color, fontWeight, borderBottom: '1px solid rgba(255,255,255,0.25)', whiteSpace: 'nowrap' };
-};
-const actionButtonStyle = (type) => {
-    let color = '#facc15';
-    let background = '#374151';
-    if (type === 'restore') { color = '#10b981'; background = '#d1fae5'; }
-    if (type === 'force-delete') { color = '#f87171'; background = '#fee2e2'; }
-    return { color, background, marginLeft: '4px', marginRight: '4px', padding: '4px 8px', borderRadius: '5px', cursor: 'pointer', border: '1px solid', fontSize: '0.8rem', fontWeight: '600', transition: 'background-color 0.2s' };
-};
 </script>
 
 <template>
-    <AdminNavbar>
-        
-        <div :style="formWrapperOuterStyle">
-            <div :style="formWrapperInnerStyle">
-                <div :style="sectionHeaderStyle">DELETED REPORTS</div>
-                <div :style="contentCardStyle">
-                    <h2 :style="mainHeadingStyle">Incident Trash Bin</h2>
-                    <p :style="subHeadingStyle">Soft-deleted reports available for restoration or permanent deletion. Only records with a deletion date are shown.</p>
-                    
-                    <div :style="controlBarStyle">
-                        <div :style="searchWrapperStyle">
-                            <input type="text" v-model="searchTerm" placeholder="Search by ID, Name, or Offense..." :style="searchInputStyle"/>
-                            <svg :style="searchIconStyle" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path d="M10 18a8 8 0 100-16 8 8 0 000 16zM21 21l-4.35-4.35" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/>
-                            </svg>
-                        </div>
-                        <div :style="totalReportsStyle">RECORDS IN TRASH: {{ trashIncidents.length }}</div>
-                    </div>
-                    
-                    <div v-if="isLoading" :style="loadingStyle">Loading deleted incident reports...</div>
-                    <div v-else-if="error" :style="{ ...errorBoxStyle, color: '#cc0000', borderColor: '#cc0000' }">{{ error }}</div>
-                    
-                    <div v-else-if="trashIncidents.length === 0" :style="noDataStyle">
-                        <p :style="noDataTitleStyle">Trash is Empty</p>
-                        <p :style="noDataSubTitleStyle">No soft-deleted reports found.</p>
-<button @click="router.push({ name: 'AdminIncidents' })" :style="{...actionButtonStyle(), marginTop: '15px', background: '#1d3e21', color: 'white'}">Back to Active Reports</button>
-                    </div>
-                    
-                    <div v-else :style="tableOuterPanelStyle">
-                        <div :style="tableWrapperStyle">
-                            <table :style="tableStyle">
-                                <thead :style="tableHeaderStyle">
-                                    <tr>
-                                        <th :style="tableHeaderCellStyle('tl')" @click="toggleSort('id')">ID{{ getSortIcon('id') }}</th>
-                                        <th :style="tableHeaderCellStyle('')" @click="toggleSort('full_name')">STUDENT NAME{{ getSortIcon('full_name') }}</th>
-                                        <th :style="tableHeaderCellStyle('')" @click="toggleSort('specific_offense')">OFFENSE{{ getSortIcon('specific_offense') }}</th>
-                                        <th :style="tableHeaderCellStyle('')" @click="toggleSort('deleted_at')">DELETED AT{{ getSortIcon('deleted_at') }}</th>
-                                        <th :style="tableHeaderCellStyle('tr')">ACTIONS</th>
-                                    </tr>
-                                </thead>
-                                <tbody :style="{ background: 'rgba(255,255,255,0.1)' }">
-                                    <tr v-for="incident in paginatedIncidents" :key="incident.id">
-                                        <td :style="tableDataCellStyle('id')">{{ incident.id }}</td>
-                                        <td :style="tableDataCellStyle('name')">{{ incident.full_name }}</td>
-                                        <td :style="tableDataCellStyle('normal')">
-                                            <span :style="{ fontWeight: '600', color: '#fff' }">{{ incident.specific_offense }}</span>
-                                            <span :style="{ fontSize: '0.7rem', color: '#e5e7eb', display: 'block' }">({{ incident.offense_category }})</span>
-                                        </td>
-                                        <td :style="tableDataCellStyle('normal')">
-                                            {{ formatDate(incident.deleted_at) }}
-                                        </td>
-                                        <td :style="tableDataCellStyle('actions')">
-                                            <button @click="handleRestore(incident)" :style="actionButtonStyle('restore')">Restore</button>
-                                            <button @click="handleForceDelete(incident)" :style="actionButtonStyle('force-delete')">Permanently Delete</button>
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                        
-                        <div v-if="totalPages > 1" :style="paginationContainerStyle">
-                            <button 
-                                @click="goToPage(currentPage - 1)" 
-                                :disabled="currentPage === 1" 
-                                :style="{...paginationButtonStyle(currentPage === 1), backgroundColor: '#1d3e21'}">
-                                Previous
-                            </button>
-                            <span :style="paginationInfoStyle">
-                                Page {{ currentPage }} of {{ totalPages }}
-                            </span>
-                            <button 
-                                @click="goToPage(currentPage + 1)" 
-                                :disabled="currentPage === totalPages" 
-                                :style="{...paginationButtonStyle(currentPage === totalPages), backgroundColor: '#1d3e21'}">
-                                Next
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
+  <AdminNavbar>
+    <div :style="pageStyle">
+      <h1 :style="headerTitleStyle">
+        RECOVER AND PERMANENTLY DELETE INCIDENT REPORTS
+      </h1>
+      <p :style="headerSubtitleStyle">
+        Review and manage all reports that have been moved to the trash.
+        Reports can be restored or permanently deleted from this section.
+      </p>
+
+      <div :style="controlBarOuterStyle">
+        <div :style="searchWrapperStyle">
+          <input
+            type="text"
+            v-model="searchTerm"
+            placeholder="Search"
+            :style="searchInputStyle"
+          />
         </div>
-    </AdminNavbar>
+        <div :style="totalReportsPillStyle">
+          RECORDS IN TRASH: {{ trashIncidents.length }}
+        </div>
+      </div>
+
+      <div :style="tableFrameOuterStyle">
+        <div :style="tableFrameInnerStyle">
+          <div :style="headerRowBarStyle">
+            <div>STUDENT NAME</div>
+            <div>OFFENSE</div>
+            <div>DELETE AT</div>
+            <div>ACTIONS</div>
+          </div>
+
+          <div :style="tableBodyContainerStyle">
+            <div v-if="isLoading" :style="loadingStyle">
+              Loading deleted incident reports...
+            </div>
+
+            <div
+              v-else-if="error"
+              :style="{
+                ...errorBoxStyle,
+                color: '#991b1b',
+                borderColor: '#991b1b',
+              }"
+            >
+              {{ error }}
+            </div>
+
+            <div
+              v-else-if="trashIncidents.length === 0"
+              :style="noDataStyle"
+            >
+              <p :style="noDataTitleStyle">Trash is Empty</p>
+              <p :style="noDataSubTitleStyle">
+                No soft-deleted reports found.
+              </p>
+              <button
+                @click="router.push({ name: 'AdminIncidents' })"
+                :style="{
+                  padding: '8px 16px',
+                  borderRadius: '10px',
+                  border: 'none',
+                  background: '#14532d',
+                  color: 'white',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  marginTop: '15px',
+                }"
+              >
+                Back to Active Reports
+              </button>
+            </div>
+
+            <template v-else>
+              <table :style="tableStyle">
+                <tbody>
+                  <tr v-for="incident in paginatedIncidents" :key="incident.id">
+                    <td :style="tableDataCellStyle('name')">
+                      {{ incident.full_name }}
+                    </td>
+                    <td :style="tableDataCellStyle('normal')">
+                      {{ incident.specific_offense }}
+                    </td>
+                    <td :style="tableDataCellStyle('normal')">
+                      {{ formatDate(incident.deleted_at) }}
+                    </td>
+                    <td :style="tableDataCellStyle('actions')">
+                      <button
+                        :style="actionButtonStyle(false)"
+                        @click.stop="openConfirm('restore', incident)"
+                      >
+                        Restore
+                      </button>
+                      <button
+                        :style="actionButtonStyle(true)"
+                        @click.stop="openConfirm('force', incident)"
+                      >
+                        Permanently Delete
+                      </button>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+
+              <div
+                v-if="totalPages > 1"
+                :style="paginationContainerStyle"
+              >
+                <button
+                  @click="goToPage(currentPage - 1)"
+                  :disabled="currentPage === 1"
+                  :style="paginationButtonStyle(currentPage === 1)"
+                >
+                  Previous
+                </button>
+                <span :style="paginationInfoStyle">
+                  Page {{ currentPage }} of {{ totalPages }}
+                </span>
+                <button
+                  @click="goToPage(currentPage + 1)"
+                  :disabled="currentPage === totalPages"
+                  :style="paginationButtonStyle(currentPage === totalPages)"
+                >
+                  Next
+                </button>
+              </div>
+            </template>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- green notifier modal -->
+    <div
+      v-if="showConfirmModal"
+      :style="modalOverlayStyle"
+      @click.self="closeConfirm"
+    >
+      <div :style="modalBoxStyle">
+        <div :style="modalInnerStyle">
+          <template v-if="confirmType === 'force'">
+            <p :style="modalTitleStyle">WARNING:</p>
+            <p :style="modalTextStyle">
+              Are you sure you want to PERMANENTLY DELETE?
+            </p>
+          </template>
+          <template v-else>
+            <p :style="modalTextStyle">
+              Are you sure you want to RESTORE?
+            </p>
+          </template>
+
+          <div :style="modalButtonsRowStyle">
+            <button :style="modalBtnStyle(false)" @click="closeConfirm">
+              CANCEL
+            </button>
+            <button :style="modalBtnStyle(true)" @click="confirmAction">
+              YES
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </AdminNavbar>
 </template>

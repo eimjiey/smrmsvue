@@ -3,9 +3,10 @@
     <!-- Top green header like dashboard -->
     <div class="hero">
       <UserNavbar />
-      <h1 class="hero-title">
-        STUDENT MISCONDUCT REPORT MANAGEMENT
-      </h1>
+        <h1 class="hero-title">MISCONTRACK</h1>
+        <p class="hero-subtitle">
+          Providing a Smarter Approach and Secure Reporting You Can Rely On.
+        </p>
     </div>
 
     <!-- Large rounded green panel -->
@@ -443,5 +444,32 @@ onMounted(fetchReportDetails);
   .details-card {
     padding: 18px 14px 22px;
   }
+
+  .hero-inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 40px 24px 0;
+  text-align: center;
+}
+
+.hero-hello {
+  margin-top: 20px;
+  font-size: 2rem;
+  letter-spacing: 2px;
+  color: #0e5821;
+}
+
+.hero-title {
+  color: #0e5821;
+  font-size: 2.4rem;
+  letter-spacing: 3px;
+  margin: 10px 0 10px;
+  font-weight: 800;
+}
+
+.hero-subtitle {
+  color: #f7fff4;
+  font-size: 0.95rem;
+}
 }
 </style>

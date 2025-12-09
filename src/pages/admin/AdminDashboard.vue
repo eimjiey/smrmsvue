@@ -7,7 +7,7 @@
   <div :style="helloBoxStyle">
     <h1 :style="helloTitleStyle">HELLO, ADMIN!</h1>
     <p :style="helloTextStyle">
-      A safer, fairer, and more transparent approach to handling student misconduct.
+      Providing a Smarter Approach and Secure Reporting You Can Rely On.
     </p>
   </div>
 
@@ -64,7 +64,7 @@
           <div :style="chartHeaderStyle">
             <h3 :style="chartTitleStyle">Monthly Misconduct Trends</h3>
             <p :style="chartSubtitleStyle">
-              Incidents Reported Monthly in S.Y. 2025-2026
+              Incidents Reported Monthly in First Semester S.Y. 2025-2026
             </p>
           </div>
 
@@ -196,8 +196,11 @@
         <div :style="[chartOuterPanelStyle, { flex: '1' }]">
           <div :style="chartHeaderStyle">
             <h3 :style="chartTitleStyle">
-              Straight Line Predictive Forecast: January 2026 - May 2026
+              Straight Line Predictive Forecast
             </h3>
+            <p :style="chartSubtitleStyle">
+              Predictive Forecast for the Second Semester S.Y. 2025-2026
+            </p>
           </div>
 
           <div

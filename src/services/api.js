@@ -4,7 +4,7 @@ import axios from 'axios';
 
 // 1. Create the Axios instance
 const api = axios.create({
-        baseURL: process.env.VUE_APP_API_URL || 'http://192.168.8.57:8000/api',
+        baseURL: process.env.VUE_APP_API_URL || 'http://188.1.13.156:8000/api',
     headers: {  
         'Accept': 'application/json',
         'Content-Type': 'application/json',

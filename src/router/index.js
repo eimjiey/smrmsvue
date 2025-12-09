@@ -16,8 +16,12 @@ import UserStudents from '@/pages/user/UserStudents.vue'
 import ReportDetails from '@/pages/user/ReportDetails.vue' 
 import CertificateGenerator from '@/pages/admin/CertificateGenerator.vue';
 import ViewPrescriptive from '@/pages/admin/ViewPrescriptive.vue';
-// 🔑 NEW IMPORT: Incident Trash Component (assuming filename is IncidentTrash.vue in the admin folder)
 import IncidentTrash from '@/pages/admin/IncidentTrash.vue'; 
+// 🔑 NEW IMPORT: Audit Logs Component
+import IncidentAuditLogs from '@/pages/admin/IncidentAuditLogs.vue'; 
+// 🔑 NEW IMPORT: Login History Component
+import LoginHistory from '@/pages/admin/LoginHistory.vue'; 
+
 
 const routes = [
     // Default Redirect: '/' redirects to '/login'
@@ -30,6 +34,7 @@ const routes = [
     // Basic Views
     { path: '/home', name: 'Home', component: HomeView },
     { path: '/about', name: 'About', component: () => import('@/views/AboutView.vue') },
+    { path: '/about-us', name: 'AboutUs', component: () => import('@/pages/AboutUs.vue') },
 
     // --------------------------------------------------------------------------------
     // ## USER ROUTES
@@ -82,12 +87,26 @@ const routes = [
         component: AdminIncidents,
         meta: { requiresAuth: true, isAdmin: true }
     },
-
-    // 🔑 NEW ROUTE: Incident Trash View (Soft Deleted Reports)
     {
         path: '/admin/incidents/trash',
-        name: 'IncidentTrash', // This name resolves the runtime error
-        component: IncidentTrash, // Component imported above
+        name: 'IncidentTrash', 
+        component: IncidentTrash, 
+        meta: { requiresAuth: true, isAdmin: true }
+    },
+    
+    // Audit Logs View
+    {
+        path: '/admin/audit-logs',
+        name: 'IncidentAuditLogs', 
+        component: IncidentAuditLogs, 
+        meta: { requiresAuth: true, isAdmin: true }
+    },
+    
+    // 🚀 NEW ROUTE: Login History View
+    {
+        path: '/admin/login-history',
+        name: 'LoginHistory', 
+        component: LoginHistory, 
         meta: { requiresAuth: true, isAdmin: true }
     },
 
@@ -113,7 +132,6 @@ const routes = [
         component: CertificateGenerator
     },
     
-
     {
         path: '/admin/profile',
         name: 'AdminProfile',
@@ -126,13 +144,6 @@ const routes = [
         component: ViewPrescriptive,
         props: true 
     },
-    {
-    path: '/about-us',
-    name: 'AboutUs',
-    component: () => import('@/pages/AboutUs.vue'),
-    }
-
-
 ]
 
 const router = createRouter({

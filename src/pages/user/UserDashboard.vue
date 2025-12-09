@@ -5,18 +5,11 @@
       <UserNavbar />
 
       <div class="hero-inner">
-        <h1 class="hero-title">
-          STUDENT MISCONDUCT REPORT MANAGEMENT
-        </h1>
-
-        <div class="hero-buttons">
-          <button class="btn btn-primary" @click="goToReport">
-            REPORT INCIDENT
-          </button>
-          <button class="btn btn-secondary" @click="goToMyReports">
-            VIEW REPORTS
-          </button>
-        </div>
+        <p class="hero-hello">Hello, {{ username }}!</p>
+        <h1 class="hero-title">MISCONTRACK</h1>
+        <p class="hero-subtitle">
+          Providing a Smarter Approach and Secure Reporting You Can Rely On.
+        </p>
       </div>
     </div>
 
@@ -24,7 +17,7 @@
     <section class="totals-section">
       <div class="total-card">
         <div class="total-value">{{ totalReports }}</div>
-        <div class="total-label">TOTAL MISCONDUCT REPORTS FILED</div>
+        <div class="total-label">TOTAL MISCONDUCT REPORT FILED</div>
       </div>
     </section>
 
@@ -78,17 +71,15 @@
       </div>
     </section>
 
-    <!-- LOWER LIGHT AREA INFO -->
+    <!-- LOWER INFO AREA -->
     <main class="content">
       <section class="info-card">
         <div class="info-left"></div>
         <div class="info-right">
           <h2 class="info-title">INFO</h2>
           <p class="info-text">
-            The Student Misconduct Report Management System helps schools
-            record, track, and manage misconduct cases efficiently. Our goal
-            is to promote fairness, accountability, and a safe learning
-            environment.
+            MisconTrack, is a Student Misconduct Report Management System (SMRMS) it is a application designed to record, track, and manage student misconduct cases.
+            It enables teachers and administrators to file incident reports securely, while providing school leaders with organized data for monitoring and decision-making.
           </p>
         </div>
       </section>
@@ -110,6 +101,7 @@ export default {
       stats: {
         reports: 0,
       },
+      username: '',
       isStatsLoading: false,
       isMonthlyLoading: false,
       isProgramLoading: false,
@@ -126,7 +118,6 @@ export default {
         (v) => Number(v) > 0,
       );
     },
-    // BAR GRAPH CONFIG FOR MONTHLY MISCONDUCT
     monthlyChartData() {
       const labels = this.monthlyMisconduct.map((i) => i.month_label);
       const data = this.monthlyMisconduct.map((i) => i.count);
@@ -173,16 +164,20 @@ export default {
     },
   },
   mounted() {
+    this.fetchUser();
     this.fetchStats();
     this.fetchMonthlyMisconduct();
     this.fetchMisconductPerProgram();
   },
   methods: {
-    goToReport() {
-      this.$router.push('/file-incident-report');
-    },
-    goToMyReports() {
-      this.$router.push({ name: 'UserReportHistory' });
+    async fetchUser() {
+      try {
+        const { data } = await api.get('/me'); // change to your real endpoint
+        this.username = data?.name || data?.username || 'USER';
+      } catch (error) {
+        console.error('Failed to fetch user:', error);
+        this.username = 'USER';
+      }
     },
     async fetchStats() {
       this.isStatsLoading = true;
@@ -222,7 +217,6 @@ export default {
   },
 };
 </script>
-
 <style scoped>
 .page {
   min-height: 100vh;
@@ -246,70 +240,59 @@ export default {
   text-align: center;
 }
 
+.hero-hello {
+  margin-top: 20px;
+  font-size: 2rem;
+  letter-spacing: 2px;
+  color: #0e5821;
+}
+
 .hero-title {
   color: #0e5821;
-  font-size: 2.2rem;
-  letter-spacing: 2px;
-  margin: 40px 0 70px;
+  font-size: 2.4rem;
+  letter-spacing: 3px;
+  margin: 10px 0 10px;
+  font-weight: 800;
 }
 
-.hero-buttons {
-  display: flex;
-  justify-content: center;
-  gap: 60px;
-}
-
-.btn {
-  padding: 18px 70px;
-  border-radius: 8px;
-  cursor: pointer;
-  font-size: 0.9rem;
-  font-weight: bold;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  border: none;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.25);
-}
-
-.btn-primary,
-.btn-secondary {
-  background-color: #063d1e;
-  color: #ffffff;
+.hero-subtitle {
+  color: #f7fff4;
+  font-size: 0.95rem;
 }
 
 /* Total reports card */
 .totals-section {
-  max-width: 1100px;
-  margin: -40px auto 0 auto;
-  padding: 0 24px 10px;
+  max-width: 600px;
+  margin: -60px auto 0 auto;
+  padding: 0 24px 20px;
 }
 
 .total-card {
   background: #1d3e21;
   color: #f8fff8;
-  border-radius: 12px;
-  padding: 20px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  border-radius: 16px;
+  padding: 24px 20px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
   text-align: center;
 }
 
 .total-value {
-  font-size: 3rem;
+  font-size: 3.5rem;
   font-weight: 900;
   line-height: 1;
 }
 
 .total-label {
-  margin-top: 8px;
-  font-size: 0.9rem;
+  margin-top: 10px;
+  font-size: 0.85rem;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 1px;
 }
 
 /* Charts layout */
 .charts-section {
   max-width: 1100px;
-  margin: 0 auto 0 auto;
+  margin: 10px auto 0 auto;
   padding: 0 24px 20px;
 }
 
@@ -321,9 +304,9 @@ export default {
 
 .chart-card {
   background-color: #ffffff;
-  border-radius: 10px;
+  border-radius: 16px;
   padding: 20px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
 }
 
 .flex-2 {
@@ -336,16 +319,16 @@ export default {
 
 .chart-title {
   color: #1d3e21;
-  margin: 0 0 6px;
+  margin: 0 0 4px;
   font-weight: 700;
-  text-align: center;
+  text-align: left;
 }
 
 .chart-subtitle {
-  margin: 0 0 14px;
-  font-size: 0.9rem;
-  color: #4caf50;
-  text-align: center;
+  margin: 0 0 12px;
+  font-size: 0.8rem;
+  color: #6c8f6c;
+  text-align: left;
 }
 
 .chart-inner {
@@ -364,23 +347,23 @@ export default {
   flex: 1;
   display: flex;
   justify-content: center;
-  padding: 20px 20px 90px;
+  padding: 10px 20px 70px;
 }
 
 .info-card {
   width: 100%;
   max-width: 720px;
   background-color: #549a6c;
-  border-radius: 12px;
+  border-radius: 16px;
   display: flex;
-  padding: 28px;
+  padding: 24px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
 }
 
 .info-left {
   background-color: rgba(255, 255, 255, 0.2);
   flex-basis: 35%;
-  border-radius: 8px;
+  border-radius: 10px;
   margin-right: 24px;
 }
 
@@ -391,16 +374,16 @@ export default {
 
 .info-title {
   color: #ffffff;
-  font-size: 1.8rem;
-  margin: 0 0 12px;
+  font-size: 1.6rem;
+  margin: 0 0 10px;
   font-weight: bold;
   text-transform: uppercase;
 }
 
 .info-text {
   color: #f0f0f0;
-  font-size: 0.95rem;
-  line-height: 1.5;
+  font-size: 0.9rem;
+  line-height: 1.6;
   margin: 0;
 }
 
@@ -411,22 +394,16 @@ export default {
   }
 
   .hero-title {
-    font-size: 1.7rem;
-    margin: 30px 0 40px;
+    font-size: 2rem;
   }
 
-  .hero-buttons {
-    flex-direction: column;
-    gap: 16px;
-  }
-
-  .btn {
-    width: 100%;
+  .hero-subtitle {
+    font-size: 0.85rem;
   }
 
   .totals-section {
-    margin-top: -30px;
-    padding: 0 16px 10px;
+    margin-top: -50px;
+    padding: 0 16px 16px;
   }
 
   .charts-section {
@@ -438,7 +415,7 @@ export default {
   }
 
   .content {
-    padding: 30px 16px 70px;
+    padding: 20px 16px 60px;
   }
 
   .info-card {

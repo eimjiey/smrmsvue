@@ -1,10 +1,20 @@
 <template>
   <header class="topbar">
     <div class="topbar-inner">
-      <!-- Left: logo block -->
-      <div class="logo-block" @click="$router.push('/user/dashboard')">
-        <div class="logo-icon"></div>
-        <span class="logo-text">SMRMS</span>
+      <!-- Left: hamburger + logo block -->
+      <div class="left-group">
+        <!-- Mobile hamburger -->
+        <button class="hamburger" @click="isOpen = !isOpen">
+          <span :class="['bar', { 'bar--open': isOpen }]"></span>
+          <span :class="['bar', { 'bar--open': isOpen }]"></span>
+          <span :class="['bar', { 'bar--open': isOpen }]"></span>
+        </button>
+
+        <!-- Logo -->
+        <div class="logo-block" @click="$router.push('/user/dashboard')">
+          <img src="@/assets/SMRMSLOGO.png" alt="SMRMS Logo" class="logo-img" />
+          <span class="logo-text">SMRMS</span>
+        </div>
       </div>
 
       <!-- Center: rounded dark menu pill -->
@@ -41,19 +51,18 @@
   </header>
 </template>
 
-<script>
-export default {
-  name: 'UserNavbar',
-};
+<script setup>
+import { ref } from 'vue';
+
+const isOpen = ref(false);
 </script>
 
 <style scoped>
 .topbar {
   width: 100%;
-  background-color: transparent; /* header background from parent */
+  background-color: transparent;
 }
 
-/* row with logo, menu pill, profile button */
 .topbar-inner {
   max-width: 1200px;
   margin: 0 auto;
@@ -64,28 +73,68 @@ export default {
   padding: 12px 24px 0;
 }
 
-/* logo block */
+.left-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* hamburger (mobile only) */
+.hamburger {
+  display: none;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 4px;
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  border: none;
+  background-color: #00361d;
+  cursor: pointer;
+  padding: 0;
+}
+
+.hamburger .bar {
+  width: 18px;
+  height: 2px;
+  background-color: #ffffff;
+  border-radius: 999px;
+  transition: transform 0.25s ease, opacity 0.25s ease;
+}
+
+.hamburger .bar:nth-child(1).bar--open {
+  transform: translateY(6px) rotate(45deg);
+}
+.hamburger .bar:nth-child(2).bar--open {
+  opacity: 0;
+}
+.hamburger .bar:nth-child(3).bar--open {
+  transform: translateY(-6px) rotate(-45deg);
+}
+
+/* logo block using real image */
 .logo-block {
   display: flex;
   align-items: center;
   background-color: #00361d;
-  border-radius: 4px;
-  padding: 10px 22px;
+  border-radius: 999px;
+  padding: 8px 18px 8px 10px;
   cursor: pointer;
 }
 
-.logo-icon {
-  width: 36px;
-  height: 36px;
-  background-color: #78ae63;
-  border-radius: 4px;
-  margin-right: 10px;
+.logo-img {
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
+  margin-right: 8px;
 }
 
 .logo-text {
   color: #e4f4df;
-  font-weight: bold;
-  letter-spacing: 1px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  font-size: 0.8rem;
 }
 
 /* center dark pill menu */
@@ -98,7 +147,6 @@ export default {
   gap: 30px;
 }
 
-/* links */
 .menu-link {
   color: #e4f4df;
   text-decoration: none;
@@ -128,9 +176,24 @@ export default {
 @media (max-width: 900px) {
   .topbar-inner {
     flex-wrap: wrap;
-    justify-content: center;
-    gap: 12px;
+    justify-content: space-between;
+    gap: 10px;
     height: auto;
+  }
+
+  .center-menu {
+    order: 3;
+    width: 100%;
+    justify-content: center;
+    margin-top: 6px;
+  }
+
+  .profile-pill {
+    padding: 8px 20px;
+  }
+
+  .hamburger {
+    display: flex;
   }
 }
 </style>

@@ -9,7 +9,9 @@
       
       <h1 :style="welcomeTextStyle">HELLO, WELCOME!</h1>
       
-      <div :style="descStyle">STUDENT MISCONDUCT REPORT MANAGEMENT</div>
+      <div :style="descStyle">MISCONTRACK </div>
+      <div :style="desStyle">"Providing a Smarter Approach and Secure Reporting You Can Rely On."</div>
+
       
       <div :style="registerBoxStyle">
         <div :style="registerPromptStyle">Don't have an account?</div>
@@ -210,6 +212,17 @@ export default {
       };
     },
     descStyle() {
+      return {
+        fontSize: '1.8rem',
+        fontWeight: 'Bold',
+        margin: '10px 0 10px 0',
+        zIndex: 1,
+        textAlign: 'center',
+        color: '#ccc',
+      };
+
+          },
+    desStyle() {
       return {
         fontSize: '1.2rem',
         fontWeight: 'normal',

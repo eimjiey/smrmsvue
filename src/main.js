@@ -14,7 +14,8 @@ import {
   MdLogoutOutlined,
   MdDashboardTwotone,
   MdRestorefromtrashTwotone,
-  BiSearch,
+  BiSearch
+  
 } from 'oh-vue-icons/icons';
 
 addIcons(
